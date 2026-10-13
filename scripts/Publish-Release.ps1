@@ -3,15 +3,16 @@
 .SYNOPSIS
   Builds the app and publishes it as the latest release for office PCs to auto-update from.
 .EXAMPLE
-  .\Publish-Release.ps1 -ReleaseFolder C:\dev\sacramental-records-releases -Notes "Fixed certificate layout"
+  .\Publish-Release.ps1 -Notes "Fixed certificate layout"
 #>
 param(
-    [Parameter(Mandatory)] [string] $ReleaseFolder,
+    [string] $ReleaseFolder = (Join-Path $PSScriptRoot '..\releases'),
     [string] $Notes = "",
     [switch] $NoPush
 )
 
 $ErrorActionPreference = 'Stop'
+if (-not (Test-Path $ReleaseFolder)) { New-Item -ItemType Directory -Path $ReleaseFolder | Out-Null }
 $project = Join-Path $PSScriptRoot '..\src\SacramentalRecords.App\SacramentalRecords.App.csproj' | Resolve-Path
 $version = ([xml](Get-Content $project)).Project.PropertyGroup.AssemblyVersion | Where-Object { $_ } | Select-Object -First 1
 if (-not $version) { throw "AssemblyVersion not found in $project" }
@@ -50,8 +51,9 @@ Remove-Item $publishDir -Recurse -Force
 
 Write-Host "Release $version written to $ReleaseFolder"
 
-if (-not $NoPush -and (Test-Path (Join-Path $ReleaseFolder '.git'))) {
-    git -C $ReleaseFolder add -A
-    git -C $ReleaseFolder commit -m "Release $version"
-    git -C $ReleaseFolder push
+if (-not $NoPush) {
+    $repoRoot = Join-Path $PSScriptRoot '..' | Resolve-Path
+    git -C $repoRoot add -- (Resolve-Path $ReleaseFolder)
+    git -C $repoRoot commit -m "Release $version"
+    git -C $repoRoot push
 }

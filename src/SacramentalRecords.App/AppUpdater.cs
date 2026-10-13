@@ -15,7 +15,7 @@ internal static class AppUpdater
 {
     public const string SettingKey = "SACRAMENTAL_RECORDS_UPDATE_MANIFEST";
     public const string DefaultManifestLocation =
-        "https://raw.githubusercontent.com/jeff-woehler/sacramental-records-releases/main/latest.json";
+        "https://raw.githubusercontent.com/jeff-woehler/sacramental-records/main/releases/latest.json";
 
     private const string SettingsFileName = "SacramentalRecords.settings.json";
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
