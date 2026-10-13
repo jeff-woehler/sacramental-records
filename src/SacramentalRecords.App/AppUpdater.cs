@@ -37,14 +37,15 @@ internal static class AppUpdater
         try
         {
             manifestUri = ToUri(location);
+            var manifestBytes = StripUtf8Bom(await ReadBytesAsync(manifestUri));
             manifest = JsonSerializer.Deserialize<UpdateManifest>(
-                await ReadBytesAsync(manifestUri),
+                manifestBytes,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidDataException("Empty update manifest.");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Update check skipped: {ex.Message}");
+            LogSkippedCheck(ex);
             return false;
         }
 
@@ -143,6 +144,25 @@ internal static class AppUpdater
 
     private static Uri ToUri(string location) =>
         Uri.TryCreate(location, UriKind.Absolute, out var uri) ? uri : new Uri(Path.GetFullPath(location));
+
+    private static readonly byte[] Utf8Bom = [0xEF, 0xBB, 0xBF];
+
+    private static byte[] StripUtf8Bom(byte[] bytes) =>
+        bytes.AsSpan().StartsWith(Utf8Bom) ? bytes[Utf8Bom.Length..] : bytes;
+
+    // Debug.WriteLine is compiled out in Release builds, so failures here would otherwise be invisible.
+    private static void LogSkippedCheck(Exception ex)
+    {
+        try
+        {
+            var logPath = Path.Combine(AppContext.BaseDirectory, "update-check.log");
+            File.AppendAllText(logPath, $"{DateTime.Now:u} Update check skipped: {ex}\n");
+        }
+        catch
+        {
+            // Logging must never crash the app.
+        }
+    }
 
     private static async Task<byte[]> ReadBytesAsync(Uri uri) => uri.Scheme switch
     {

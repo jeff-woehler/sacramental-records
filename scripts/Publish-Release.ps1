@@ -42,12 +42,14 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 [IO.Compression.ZipFile]::CreateFromDirectory($publishDir, $packagePath)
 Remove-Item $publishDir -Recurse -Force
 
-[ordered]@{
+$manifestJson = [ordered]@{
     version = $version
     package = $packageName
     sha256  = (Get-FileHash $packagePath -Algorithm SHA256).Hash
     notes   = $Notes
-} | ConvertTo-Json | Set-Content $manifestPath -Encoding UTF8
+} | ConvertTo-Json
+# Set-Content -Encoding UTF8 writes a BOM that System.Text.Json refuses to parse; write BOM-less UTF-8 instead.
+[IO.File]::WriteAllText($manifestPath, $manifestJson, (New-Object System.Text.UTF8Encoding($false)))
 
 Write-Host "Release $version written to $ReleaseFolder"
 
