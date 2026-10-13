@@ -1,0 +1,101 @@
+<Window x:Class="SacramentalRecords.App.PersonDetailWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="clr-namespace:SacramentalRecords.App"
+        Title="Person details" Height="700" Width="980" MinHeight="520" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        PreviewKeyDown="Window_PreviewKeyDown">
+  <Window.Resources>
+    <app:StatusDisplayConverter x:Key="StatusDisplayConverter" />
+    <app:SacramentTypeDisplayConverter x:Key="SacramentTypeDisplayConverter" />
+    <app:SacramentNameLabelConverter x:Key="SacramentNameLabelConverter" />
+  </Window.Resources>
+  <Grid Margin="32">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <Grid Grid.Row="0" Margin="0,0,0,22">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <StackPanel>
+        <TextBlock Text="PERSON RECORD" Foreground="{StaticResource AccentBrush}" FontSize="13" FontWeight="Bold" />
+        <TextBlock x:Name="NameText" Style="{StaticResource DisplayText}" FontSize="36" FontWeight="Bold" Margin="0,5,0,0" />
+        <TextBlock x:Name="StatusText" FontSize="16" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,0" />
+      </StackPanel>
+      <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+        <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="10,7">
+          <StackPanel Orientation="Horizontal">
+            <StackPanel Margin="0,0,18,0"><TextBlock Text="CHURCH DB" Style="{StaticResource CardLabel}"/><TextBox x:Name="ChurchDbText" FontSize="14" IsReadOnly="True" IsTabStop="False" BorderThickness="0" Background="Transparent" Padding="0" VerticalContentAlignment="Center"/></StackPanel>
+            <StackPanel Margin="0,0,18,0"><TextBlock Text="PDS" Style="{StaticResource CardLabel}"/><TextBox x:Name="PdsText" FontSize="14" IsReadOnly="True" IsTabStop="False" BorderThickness="0" Background="Transparent" Padding="0" VerticalContentAlignment="Center"/></StackPanel>
+            <StackPanel><TextBlock Text="FLOCKNOTE" Style="{StaticResource CardLabel}"/><TextBox x:Name="FlocknoteText" FontSize="14" IsReadOnly="True" IsTabStop="False" BorderThickness="0" Background="Transparent" Padding="0" VerticalContentAlignment="Center"/></StackPanel>
+          </StackPanel>
+        </Border>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+          <Button Content="Change" Width="100" Click="Edit_Click" ToolTip="Change person (Ctrl+E)" />
+          <Button Content="Certificate" Width="100" Margin="10,0,0,0" Click="BaptismCertificate_Click" />
+          <Button Content="Delete" Width="100" Margin="10,0,0,0" Style="{StaticResource DangerButton}" Click="Delete_Click" />
+        </StackPanel>
+      </StackPanel>
+    </Grid>
+
+    <GroupBox Grid.Row="1" Margin="0,0,0,4" Header="Person and baptism details">
+      <Grid Margin="4,2">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <StackPanel Grid.Column="0" Margin="0,0,12,0"><TextBlock Text="BIRTH DATE" Foreground="{StaticResource MutedBrush}" FontSize="12" FontWeight="Bold"/><TextBlock x:Name="BirthText" FontSize="16" Margin="0,2,0,0"/></StackPanel>
+        <StackPanel Grid.Column="1" Margin="0,0,12,0"><TextBlock Text="BIRTH CITY" Style="{StaticResource CardLabel}"/><TextBlock x:Name="BirthCityText" FontSize="15" TextWrapping="Wrap"/></StackPanel>
+        <StackPanel Grid.Column="2"><TextBlock Text="BAPTISM DATE" Style="{StaticResource CardLabel}"/><TextBlock x:Name="BaptismDateText" FontSize="15" TextWrapping="Wrap"/></StackPanel>
+      </Grid>
+    </GroupBox>
+    <GroupBox Grid.Row="2" Margin="0,8,0,0" Header="Sacrament records">
+      <ListBox x:Name="SacramentsGrid" BorderThickness="0" Background="Transparent" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="False" ScrollViewer.PanningMode="VerticalOnly" MouseDoubleClick="SacramentsGrid_MouseDoubleClick" KeyDown="SacramentsGrid_KeyDown">
+        <ListBox.Template>
+          <ControlTemplate TargetType="ListBox">
+            <ScrollViewer HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}" VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}" CanContentScroll="{TemplateBinding ScrollViewer.CanContentScroll}" PanningMode="{TemplateBinding ScrollViewer.PanningMode}">
+              <StackPanel>
+                <ItemsPresenter />
+                <Border Background="{StaticResource SurfaceMutedBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="10" MinHeight="82" Padding="12" Margin="0,0,0,8">
+                  <Button Content="Add sacrament record" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Click="AddSacrament_Click" ToolTip="New sacrament (Ctrl+N)" />
+                </Border>
+              </StackPanel>
+            </ScrollViewer>
+          </ControlTemplate>
+        </ListBox.Template>
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Border Background="{StaticResource SurfaceMutedBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="10" MinHeight="118" Padding="12" Margin="0,0,0,8">
+              <Grid>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <DockPanel Grid.Row="0" Margin="0,0,0,8">
+                  <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                    <TextBlock Text="{Binding SacramentType, Converter={StaticResource SacramentTypeDisplayConverter}}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+                    <TextBlock Text="  ·  " FontSize="18" Foreground="{StaticResource MutedBrush}"/>
+                    <TextBlock Text="{Binding SacramentDate, StringFormat={}{0:d}, TargetNullValue=—}" FontSize="18" FontWeight="SemiBold"/>
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Edit" Padding="10,5" Click="EditSacrament_Click" ToolTip="Edit sacrament (Enter or double-click)"/><Button Content="Delete" Padding="10,5" Margin="6,0,0,0" Style="{StaticResource DangerButton}" Click="DeleteSacrament_Click" ToolTip="Delete sacrament (Delete)"/>
+                  </StackPanel>
+                </DockPanel>
+                <Grid Grid.Row="1">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                  <StackPanel Margin="0,0,12,0"><TextBlock Text="{Binding SacramentType, Converter={StaticResource SacramentNameLabelConverter}}" Style="{StaticResource CardLabel}"/><TextBlock Text="{Binding Name, TargetNullValue=—}" TextWrapping="Wrap"/></StackPanel>
+                  <StackPanel Grid.Column="1" Margin="0,0,12,0"><TextBlock Text="SPONSOR 1" Style="{StaticResource CardLabel}"/><TextBlock Text="{Binding SponsorOne, TargetNullValue=—}" TextWrapping="Wrap"/></StackPanel>
+                  <StackPanel Grid.Column="2" Margin="0,0,12,0"><TextBlock Text="SPONSOR 2" Style="{StaticResource CardLabel}"/><TextBlock Text="{Binding SponsorTwo, TargetNullValue=—}" TextWrapping="Wrap"/></StackPanel>
+                  <StackPanel Grid.Column="3" Margin="0,0,12,0"><TextBlock Text="Register Location" Style="{StaticResource CardLabel}"/><TextBlock TextWrapping="Wrap"><Run Text="{Binding Volume, TargetNullValue=—}"/><Run Text="-"/><Run Text="{Binding Page, TargetNullValue=—}"/><Run Text="-"/><Run Text="{Binding Item, TargetNullValue=—}"/></TextBlock></StackPanel>
+                </Grid>
+                <Grid Grid.Row="2" Margin="0,0,0,8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                  <StackPanel Margin="0,0,12,0"><TextBlock Text="PERFORMED AT" Style="{StaticResource CardLabel}"/><TextBlock Text="{Binding Place, TargetNullValue=—}" TextWrapping="Wrap"/></StackPanel>
+                  <StackPanel Grid.Column="1" Margin="0,0,12,0"><TextBlock Text="MINISTER" Style="{StaticResource CardLabel}"/><TextBlock Text="{Binding Minister, TargetNullValue=—}" TextWrapping="Wrap"/></StackPanel>
+                  <StackPanel Grid.Column="2" Margin="0,0,12,0"><TextBlock Text="FATHER" Style="{StaticResource CardLabel}"/><TextBlock Text="{Binding FatherName, TargetNullValue=—}" TextWrapping="Wrap"/></StackPanel>
+                  <StackPanel Grid.Column="3"><TextBlock Text="MOTHER" Style="{StaticResource CardLabel}"/><TextBlock Text="{Binding MotherName, TargetNullValue=—}" TextWrapping="Wrap"/></StackPanel>
+                </Grid>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </GroupBox>
+    <StatusBar Grid.Row="3" Margin="0,16,0,0"><TextBlock x:Name="StatusBarText"/></StatusBar>
+  </Grid>
+</Window>

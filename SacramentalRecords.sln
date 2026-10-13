@@ -1,0 +1,58 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{034E0DBE-13BA-4D6A-9FBC-1761027F62A9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SacramentalRecords.Domain", "src\SacramentalRecords.Domain\SacramentalRecords.Domain.csproj", "{3B33D6B7-CA26-4D46-9E43-301F75CD212F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SacramentalRecords.Application", "src\SacramentalRecords.Application\SacramentalRecords.Application.csproj", "{3863CCEB-1E64-475E-AE07-8F1928EBDB0A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SacramentalRecords.Infrastructure", "src\SacramentalRecords.Infrastructure\SacramentalRecords.Infrastructure.csproj", "{74022915-5B86-4137-A6B0-8C03F073423F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SacramentalRecords.App", "src\SacramentalRecords.App\SacramentalRecords.App.csproj", "{D9B670E3-C8C8-447F-ABFE-02876C5AC03F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LegacySacramentImport", "src\LegacySacramentImport\LegacySacramentImport.csproj", "{A7D8F69B-6D61-4F31-8C3B-A4BBCC2E24E1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3B33D6B7-CA26-4D46-9E43-301F75CD212F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3B33D6B7-CA26-4D46-9E43-301F75CD212F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3B33D6B7-CA26-4D46-9E43-301F75CD212F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3B33D6B7-CA26-4D46-9E43-301F75CD212F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3863CCEB-1E64-475E-AE07-8F1928EBDB0A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3863CCEB-1E64-475E-AE07-8F1928EBDB0A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3863CCEB-1E64-475E-AE07-8F1928EBDB0A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3863CCEB-1E64-475E-AE07-8F1928EBDB0A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{74022915-5B86-4137-A6B0-8C03F073423F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{74022915-5B86-4137-A6B0-8C03F073423F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{74022915-5B86-4137-A6B0-8C03F073423F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{74022915-5B86-4137-A6B0-8C03F073423F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D9B670E3-C8C8-447F-ABFE-02876C5AC03F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D9B670E3-C8C8-447F-ABFE-02876C5AC03F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D9B670E3-C8C8-447F-ABFE-02876C5AC03F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D9B670E3-C8C8-447F-ABFE-02876C5AC03F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A7D8F69B-6D61-4F31-8C3B-A4BBCC2E24E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A7D8F69B-6D61-4F31-8C3B-A4BBCC2E24E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A7D8F69B-6D61-4F31-8C3B-A4BBCC2E24E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A7D8F69B-6D61-4F31-8C3B-A4BBCC2E24E1}.Release|Any CPU.Build.0 = Release|Any CPU
+
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{3B33D6B7-CA26-4D46-9E43-301F75CD212F} = {034E0DBE-13BA-4D6A-9FBC-1761027F62A9}
+		{3863CCEB-1E64-475E-AE07-8F1928EBDB0A} = {034E0DBE-13BA-4D6A-9FBC-1761027F62A9}
+		{74022915-5B86-4137-A6B0-8C03F073423F} = {034E0DBE-13BA-4D6A-9FBC-1761027F62A9}
+						{D9B670E3-C8C8-447F-ABFE-02876C5AC03F} = {034E0DBE-13BA-4D6A-9FBC-1761027F62A9}
+		{A7D8F69B-6D61-4F31-8C3B-A4BBCC2E24E1} = {034E0DBE-13BA-4D6A-9FBC-1761027F62A9}
+
+
+		EndGlobalSection
+EndGlobal

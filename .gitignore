@@ -1,0 +1,20 @@
+# Build output
+.vs/
+**/bin/
+**/obj/
+**/TestResults/
+*.user
+*.suo
+**/desktop.ini
+
+# Parish data and local files must never be committed
+sample-data/
+snips/
+*.lnk
+*.dbpackage
+*.bak
+*.sqlite
+*.sqlite3
+*.csv
+*.xlsx
+*.xls

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType><TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>assets\stj.ico</ApplicationIcon>
+    <AssemblyVersion>1.0.7</AssemblyVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SacramentalRecords.Application\SacramentalRecords.Application.csproj" />
+    <Resource Include="assets\stj.png" />
+    <Resource Include="assets\stj.ico" />
+    <None Update="SacramentalRecords.settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="assets\template.docx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <ProjectReference Include="..\SacramentalRecords.Infrastructure\SacramentalRecords.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

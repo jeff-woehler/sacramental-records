@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="OpenPackageToBegin" xml:space="preserve">
+    <value>Open a database package to begin.</value>
+  </data>
+  <data name="OpenPackageFirst" xml:space="preserve">
+    <value>Open a database package first.</value>
+  </data>
+  <data name="SelectPersonFirst" xml:space="preserve">
+    <value>Select a person first.</value>
+  </data>
+  <data name="PackageNotFound" xml:space="preserve">
+    <value>The selected database package does not exist.</value>
+  </data>
+  <data name="RecordsFound" xml:space="preserve">
+    <value>SQLite session: {0} record(s) found.</value>
+    <comment>{0} = number of people found</comment>
+  </data>
+  <data name="UsingPackage" xml:space="preserve">
+    <value>Using {0}. Changes are stored locally; Click Save when ready to publish.</value>
+    <comment>{0} = package file name</comment>
+  </data>
+  <data name="Publishing" xml:space="preserve">
+    <value>Packaging local data and writing to saved location...</value>
+  </data>
+  <data name="Published" xml:space="preserve">
+    <value>Published to saved location at {0:t}.</value>
+    <comment>{0} = time of publish</comment>
+  </data>
+  <data name="PublishFailed" xml:space="preserve">
+    <value>Local changes are safe, but publishing failed: {0}</value>
+    <comment>{0} = error message</comment>
+  </data>
+  <data name="PublishingBeforeClose" xml:space="preserve">
+    <value>Publishing local changes before closing...</value>
+  </data>
+  <data name="ClosingSession" xml:space="preserve">
+    <value>Closing local session...</value>
+  </data>
+  <data name="PeopleRefreshed" xml:space="preserve">
+    <value>People refreshed.</value>
+  </data>
+  <data name="PeopleRefreshedUnpublished" xml:space="preserve">
+    <value>People refreshed. Local changes are not yet published.</value>
+  </data>
+  <data name="PersonRecordSummary" xml:space="preserve">
+    <value>Record ID: {0} · {1} sacrament record(s)</value>
+    <comment>{0} = person record ID, {1} = number of sacrament records</comment>
+  </data>
+  <data name="CertificateSaved" xml:space="preserve">
+    <value>Baptismal certificate saved to {0}</value>
+    <comment>{0} = PDF file name</comment>
+  </data>
+</root>
