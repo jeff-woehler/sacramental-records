@@ -22,6 +22,7 @@ public partial class App : System.Windows.Application
         var splash = new SplashWindow();
         splash.Show();
 
+#if !DEBUG
         var updateCheck = AppUpdater.CheckAndPromptAsync();
         await Task.WhenAll(Task.Delay(1400), updateCheck);
         if (await updateCheck)
@@ -29,6 +30,9 @@ public partial class App : System.Windows.Application
             Shutdown();
             return;
         }
+#else
+        await Task.Delay(1400);
+#endif
 
         var mainWindow = new MainWindow
         {

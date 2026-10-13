@@ -53,7 +53,8 @@ Write-Host "Release $version written to $ReleaseFolder"
 
 if (-not $NoPush) {
     $repoRoot = Join-Path $PSScriptRoot '..' | Resolve-Path
-    git -C $repoRoot add -- (Resolve-Path $ReleaseFolder)
+    # Commit the whole repo so the AssemblyVersion bump ships with its release, not just the zip/manifest.
+    git -C $repoRoot add -A
     git -C $repoRoot commit -m "Release $version"
     git -C $repoRoot push
 }
