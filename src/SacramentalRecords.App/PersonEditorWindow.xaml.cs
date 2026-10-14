@@ -42,7 +42,7 @@ public partial class PersonEditorWindow : Window
         try
         {
             var baptism = (await _registry.GetSacramentsAsync(_original.RecordId)).FirstOrDefault(record =>
-                string.Equals(SacramentTypeCatalog.Canonicalize(record.SacramentType), "baptism", StringComparison.OrdinalIgnoreCase));
+                string.Equals(EntryTypeCatalog.Canonicalize(record.SacramentType), "baptism", StringComparison.OrdinalIgnoreCase));
             if (baptism is null) return;
             BaptismDatePicker.SelectedDate = baptism.SacramentDate?.ToDateTime(TimeOnly.MinValue);
             BaptismChurchBox.Text = baptism.Place;

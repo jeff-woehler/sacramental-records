@@ -108,7 +108,7 @@ public sealed class SqlitePackageStore : IRegistryStore, IAsyncDisposable
             var saved = record with { UpdatedUtc = DateTimeOffset.UtcNow };
             await using var command = connection.CreateCommand(); command.Transaction = transaction;
             command.CommandText = "INSERT INTO Sacraments (RecordId,PersonRecordId,SacramentType,SacramentDate,Name,Place,Minister,FatherName,MotherName,SponsorOne,SponsorTwo,SponsorTwoIsChristianWitness,ProxyOne,ProxyTwo,Volume,Page,Item,Details,CanonicalNotations,UpdatedUtc) VALUES(@id,@person,@type,@date,@name,@place,@minister,@father,@mother,@sponsor1,@sponsor2,@witness2,@proxy1,@proxy2,@volume,@page,@item,@details,@canonical,@updated) ON CONFLICT(RecordId) DO UPDATE SET PersonRecordId=@person,SacramentType=@type,SacramentDate=@date,Name=@name,Place=@place,Minister=@minister,FatherName=@father,MotherName=@mother,SponsorOne=@sponsor1,SponsorTwo=@sponsor2,SponsorTwoIsChristianWitness=@witness2,ProxyOne=@proxy1,ProxyTwo=@proxy2,Volume=@volume,Page=@page,Item=@item,Details=@details,CanonicalNotations=@canonical,UpdatedUtc=@updated";
-            AddSacramentParameters(command, saved); await command.ExecuteNonQueryAsync(cancellationToken); await AddAudit(connection, transaction, saved.RecordId, "save", "Saved sacrament record", cancellationToken); await transaction.CommitAsync(cancellationToken); HasUnpublishedChanges = true; return saved;
+            AddSacramentParameters(command, saved); await command.ExecuteNonQueryAsync(cancellationToken); await AddAudit(connection, transaction, saved.RecordId, "save", "Saved entry", cancellationToken); await transaction.CommitAsync(cancellationToken); HasUnpublishedChanges = true; return saved;
         }
         finally { _gate.Release(); }
     }
@@ -124,8 +124,8 @@ public sealed class SqlitePackageStore : IRegistryStore, IAsyncDisposable
         finally { _gate.Release(); }
     }
 
-    public Task DeletePersonAsync(Guid recordId, CancellationToken cancellationToken) => DeleteAsync("People", recordId, "Deleted person and associated sacrament records", cancellationToken);
-    public Task DeleteSacramentAsync(Guid recordId, CancellationToken cancellationToken) => DeleteAsync("Sacraments", recordId, "Deleted sacrament record", cancellationToken);
+    public Task DeletePersonAsync(Guid recordId, CancellationToken cancellationToken) => DeleteAsync("People", recordId, "Deleted person and associated entries", cancellationToken);
+    public Task DeleteSacramentAsync(Guid recordId, CancellationToken cancellationToken) => DeleteAsync("Sacraments", recordId, "Deleted entry", cancellationToken);
 
     private async Task DeleteAsync(string table, Guid id, string summary, CancellationToken cancellationToken)
     {

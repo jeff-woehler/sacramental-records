@@ -40,13 +40,13 @@ public sealed class RegistryService(IRegistryStore store)
     public async Task<SacramentRecord> SaveSacramentAsync(SacramentRecord record, DateTimeOffset? expectedUpdatedUtc, CancellationToken cancellationToken = default)
     {
         if (record.PersonRecordId == Guid.Empty || string.IsNullOrWhiteSpace(record.SacramentType))
-            throw new ValidationException("A person and sacrament type are required.");
+            throw new ValidationException("A person and entry type are required.");
         return await store.SaveSacramentAsync(record, expectedUpdatedUtc, cancellationToken);
     }
 
     public Task DeleteSacramentAsync(Guid recordId, CancellationToken cancellationToken = default)
     {
-        if (recordId == Guid.Empty) throw new ValidationException("A sacrament record ID is required.");
+        if (recordId == Guid.Empty) throw new ValidationException("An entry ID is required.");
         return store.DeleteSacramentAsync(recordId, cancellationToken);
     }
 }

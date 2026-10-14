@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Security.Cryptography;
+
 using System.Text;
 using ClosedXML.Excel;
 using Microsoft.Data.Sqlite;
@@ -9,6 +10,8 @@ internal static class Program
     private const string Baptism = "baptism";
     private const string Confirmation = "confirmation";
     private const string FirstCommunion = "first_communion";
+    private const string Marriage = "marriage";
+
 
     // Column aliases are scoped to a single sacrament type. The legacy sheets repeat columns for
     // other sacraments (the Baptisms sheet carries ConfDate/ConfChurch, the First Communions sheet
@@ -58,7 +61,19 @@ internal static class Program
         Item: ["F-Number"],
         Details: ["F-Remarks1", "F-Remarks2", "F-Misc1", "F-Misc2"]);
 
+        private static readonly Mapping MarriageMap = new(
+        Marriage,
+        Date: ["WedDate", "WeddingDate", "MarriageDate"],
+        Place: ["WedPlace", "WeddingPlace", "MarriagePlace"],
+        Minister: ["Presider", "Minister"],
+        Father: ["__Father"], Mother: ["__Mother"],
+        SponsorOne: ["Witness1"], SponsorTwo: ["Witness2"],
+        Name: ["__Spouse"], Volume: ["Volume"], Page: ["Page"],
+        Item: ["Number", "Item"],
+        Details: ["Remarks1", "Remarks2", "Misc1", "Misc2", "Chancery", "Bans", "MixRel", "DispCult", "FormMarr"]);
+
     private static readonly Mapping ConfirmationMap = new(
+
         Confirmation,
         Date: ["ConfDate", "ConfirmationDate"],
         Place: ["ConfChurch", "ConfirmationChurch"],
@@ -104,8 +119,9 @@ internal static class Program
     private const int EarliestPlausibleYear = 1800;
 
     private sealed record Options(string Input, string Database, bool Commit, string Report, string? Lookup);
-    private sealed record SourceRow(string Sheet, int Number, Mapping Map, Dictionary<string, string> Values);
-    private sealed record KnownPerson(Guid Id, string? ChurchId, string Given, string? Middle, string Family, DateOnly? Birth);
+        private sealed record SourceRow(string Sheet, int Number, Mapping Map, Dictionary<string, string> Values);
+    private sealed record KnownPerson(Guid Id, string? ChurchId, string Given, string? Middle, string Family, DateOnly? Birth, DateOnly? Baptism);
+
 
     private static readonly List<string> Report = ["Sheet,Row,Type,Severity,Action,PersonId,Field,Message"];
     private static readonly Dictionary<string, string> ParishSpellings = new(StringComparer.Ordinal);
@@ -120,13 +136,16 @@ internal static class Program
         try
         {
             var options = ParseArguments(args);
-            if (!File.Exists(options.Input)) throw new FileNotFoundException("Input workbook not found", options.Input);
+                        if (!File.Exists(options.Input)) throw new FileNotFoundException("Input workbook or wedding CSV not found", options.Input);
+
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(options.Database))!);
             if (options.Lookup is not null) LoadParishSpellings(options.Lookup);
             if (options.Commit) Backup(options.Database);
 
-            using var workbook = new XLWorkbook(options.Input);
-            var rows = ReadWorkbook(workbook);
+                        var rows = Path.GetExtension(options.Input).Equals(".csv", StringComparison.OrdinalIgnoreCase)
+                ? ReadWeddingCsv(options.Input)
+                : ReadWorkbook(new XLWorkbook(options.Input));
+
             if (rows.Count == 0) throw new InvalidOperationException("No sacramental worksheets were found.");
 
             using var connection = new SqliteConnection($"Data Source={Path.GetFullPath(options.Database)}");
@@ -134,10 +153,13 @@ internal static class Program
             Initialize(connection);
             using var transaction = connection.BeginTransaction();
 
-            var people = LoadPeople(connection, transaction);
+                        var people = LoadPeople(connection, transaction);
+            LoadBaptismDates(connection, transaction, people);
             var byChurchId = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
             var byNameKey = new Dictionary<string, List<Guid>>(StringComparer.Ordinal);
-            foreach (var person in people.Values) Index(person, byChurchId, byNameKey);
+            var byNameBaptism = new Dictionary<string, List<Guid>>(StringComparer.Ordinal);
+            foreach (var person in people.Values) Index(person, byChurchId, byNameKey, byNameBaptism);
+
 
             var seenSacraments = new HashSet<(Guid Person, string Type)>();
             int created = 0, matched = 0, sacraments = 0;
@@ -157,14 +179,19 @@ internal static class Program
                     var (firstName, middleName) = SplitName(given);
                     var churchId = Value(row, IdColumns);
                     var birth = DateField(row, BirthColumns, "BirthDate");
-                    var person = Resolve(row, people, byChurchId, byNameKey, churchId, given, family, birth);
+                                        var baptism = DateField(row, PersonBaptDateColumns, "BaptDate");
+                    var person = Resolve(row, people, byChurchId, byNameKey, byNameBaptism, churchId, given, family, birth, baptism);
+
                     var isNew = person is null;
                     if (person is null)
                     {
-                        person = new KnownPerson(NewPersonId(churchId, given, family, birth), churchId, firstName, middleName, family, birth);
+                                                person = new KnownPerson(NewPersonId(churchId, given, family, birth, baptism, row), churchId, firstName, middleName, family, birth, baptism);
+
+
                         InsertPerson(connection, transaction, person, row);
                         people[person.Id] = person;
-                        Index(person, byChurchId, byNameKey);
+                                                Index(person, byChurchId, byNameKey, byNameBaptism);
+
                         created++;
                     }
                     else matched++;
@@ -173,13 +200,18 @@ internal static class Program
                         Warn(row, "duplicate", churchId, row.Map.Type,
                             "the same person already has a record of this sacrament from another row; both were kept");
 
-                    var recordId = DeterministicId($"sacrament|{row.Sheet}|{row.Number}|{row.Map.Type}");
+                                        WarnSuspiciousMarriage(row, person, birth, baptism);
+                    var recordId = DeterministicId($"sacrament|{row.Sheet}|{row.Number}|{row.Map.Type}|{row.Values.GetValueOrDefault("__WeddingSide", "single")}");
+
                     InsertSacrament(connection, transaction, recordId, person.Id, row);
                     sacraments++;
 
                     Report.Add(Csv(row.Sheet, row.Number.ToString(CultureInfo.InvariantCulture), row.Map.Type, "info",
                         isNew ? "create-person" : "match-person", churchId ?? string.Empty, string.Empty,
-                        churchId is null ? "matched or created by name and birth date" : "keyed on legacy PersonId"));
+                                                churchId is null
+                            ? row.Map.Type == Marriage ? "matched or created using name and baptism date where available" : "matched or created by name and birth date"
+                            : "keyed on legacy PersonId"));
+
                 }
                 catch (Exception exception)
                 {
@@ -207,7 +239,7 @@ internal static class Program
             Console.WriteLine($"""
                 Rows read: {rows.Count}
                 People created: {created}; people matched: {matched}
-                Sacrament records {(options.Commit ? "written" : "planned")}: {sacraments}
+                Entries {(options.Commit ? "written" : "planned")}: {sacraments}
                 Parish spellings canonicalized from: {(options.Lookup is null ? "(no lookup supplied)" : $"{ParishSpellings.Count} mappings, {UnmappedParishes.Count} spellings unmapped")}
                 Person-level baptism fields cleared (superseded by a baptism record): {cleared}
                 Warnings: {_warnings}
@@ -226,7 +258,57 @@ internal static class Program
         }
     }
 
+        private static List<SourceRow> ReadWeddingCsv(string path)
+    {
+        var lines = File.ReadLines(path).Where(line => line.Length > 0).ToList();
+        if (lines.Count == 0) return [];
+        var headers = ParseCsvLine(lines[0]);
+        var rows = new List<SourceRow>();
+        for (var n = 1; n < lines.Count; n++)
+        {
+            var fields = ParseCsvLine(lines[n]);
+            var values = headers.Select((header, i) => (header, value: i < fields.Count ? fields[i] : string.Empty))
+                .ToDictionary(p => p.header, p => p.value, StringComparer.OrdinalIgnoreCase);
+            AddWeddingSide(rows, values, n + 1, "G", "FirstNameG", "SurnameG", "FatherG", "MotherG", "BaptDateG", "BaptChurchG", "FirstNameB", "SurnameB");
+            AddWeddingSide(rows, values, n + 1, "B", "FirstNameB", "SurnameB", "FatherB", "MotherB", "BaptDateB", "BaptChurchB", "FirstNameG", "SurnameG");
+        }
+        return rows;
+    }
+
+    private static void AddWeddingSide(List<SourceRow> rows, Dictionary<string, string> source, int number, string side,
+        string first, string surname, string father, string mother, string baptismDate, string baptismChurch,
+        string spouseFirst, string spouseSurname)
+    {
+        var values = new Dictionary<string, string>(source, StringComparer.OrdinalIgnoreCase)
+        {
+            ["FirstName"] = source.GetValueOrDefault(first, ""), ["Surname"] = source.GetValueOrDefault(surname, ""),
+            ["BaptDate"] = source.GetValueOrDefault(baptismDate, ""), ["BaptChurch"] = source.GetValueOrDefault(baptismChurch, ""),
+            ["__Father"] = source.GetValueOrDefault(father, ""), ["__Mother"] = source.GetValueOrDefault(mother, ""),
+            ["__Spouse"] = $"{source.GetValueOrDefault(spouseFirst, "").Trim()} {source.GetValueOrDefault(spouseSurname, "").Trim()}".Trim(),
+            ["__WeddingSide"] = side
+        };
+        rows.Add(new SourceRow("Weddings", number, MarriageMap, values));
+    }
+
+    private static List<string> ParseCsvLine(string line)
+    {
+        var result = new List<string>();
+        var value = new StringBuilder();
+        var quoted = false;
+        for (var i = 0; i < line.Length; i++)
+        {
+            var c = line[i];
+            if (c == '"' && quoted && i + 1 < line.Length && line[i + 1] == '"') { value.Append('"'); i++; }
+            else if (c == '"') quoted = !quoted;
+            else if (c == ',' && !quoted) { result.Add(RepairEncoding(value.ToString().Trim())); value.Clear(); }
+            else value.Append(c);
+        }
+        result.Add(RepairEncoding(value.ToString().Trim()));
+        return result;
+    }
+
     private static List<SourceRow> ReadWorkbook(XLWorkbook workbook)
+
     {
         var rows = new List<SourceRow>();
         foreach (var sheet in workbook.Worksheets)
@@ -282,8 +364,10 @@ internal static class Program
         var name = Normalize(sheetName);
         if (name.Contains("BAPT")) return BaptismMap;
         if (name.Contains("CONFIRM")) return ConfirmationMap;
-        if (name.Contains("COMMUN")) return FirstCommunionMap;
+                if (name.Contains("COMMUN")) return FirstCommunionMap;
+        if (name.Contains("WEDD") || name.Contains("MARR")) return MarriageMap;
         return null;
+
     }
 
     private static void LoadParishSpellings(string path)
@@ -435,37 +519,59 @@ internal static class Program
         return false;
     }
 
-    private static KnownPerson? Resolve(
+        private static KnownPerson? Resolve(
         SourceRow row,
         Dictionary<Guid, KnownPerson> people,
         Dictionary<string, Guid> byChurchId,
         Dictionary<string, List<Guid>> byNameKey,
+        Dictionary<string, List<Guid>> byNameBaptism,
         string? churchId,
         string given,
         string family,
-        DateOnly? birth)
+        DateOnly? birth,
+        DateOnly? baptism)
+
     {
         if (churchId is not null)
             return byChurchId.TryGetValue(churchId, out var id) ? people[id] : null;
 
-        if (birth is null)
-            throw new InvalidDataException("no PersonId and no birth date; the person cannot be identified safely");
+                var candidates = new List<Guid>();
+        if (baptism is not null)
+            candidates = byNameBaptism.GetValueOrDefault(NameKeyNoDate(given, family), [])
+                .Where(id => people[id].Baptism == baptism).ToList();
+        else if (birth is not null)
+            candidates = byNameKey.GetValueOrDefault(NameKey(given, family, birth), []);
+        else if (row.Map.Type == Marriage)
+        {
+            candidates = byNameBaptism.GetValueOrDefault(NameKeyNoDate(given, family), []);
+            if (candidates.Count == 1)
+                Warn(row, "weak-name-match", null, "PersonId", "marriage row has no birth or baptism date; matched on unique normalized name only");
+        }
+        else throw new InvalidDataException("no PersonId and no birth date; the person cannot be identified safely");
+        if (candidates.Count == 0) return null;
 
-        if (!byNameKey.TryGetValue(NameKey(given, family, birth), out var candidates) || candidates.Count == 0)
-            return null;
         if (candidates.Count > 1)
             throw new InvalidDataException($"no PersonId and {candidates.Count} existing people share this name and birth date");
 
-        Warn(row, "name-match", null, "PersonId", "no legacy PersonId; matched on name and birth date");
+                Warn(row, "name-match", null, "PersonId", baptism is null
+            ? "no legacy PersonId; matched on name and birth date"
+            : "no legacy PersonId; matched on normalized name and baptism date");
+
         return people[candidates[0]];
     }
 
-    private static void Index(KnownPerson person, Dictionary<string, Guid> byChurchId, Dictionary<string, List<Guid>> byNameKey)
+        private static void Index(KnownPerson person, Dictionary<string, Guid> byChurchId, Dictionary<string, List<Guid>> byNameKey,
+        Dictionary<string, List<Guid>> byNameBaptism)
+
     {
         if (person.ChurchId is not null) byChurchId.TryAdd(person.ChurchId, person.Id);
         var key = NameKey($"{person.Given} {person.Middle}", person.Family, person.Birth);
-        if (!byNameKey.TryGetValue(key, out var list)) byNameKey[key] = list = [];
+                if (!byNameKey.TryGetValue(key, out var list)) byNameKey[key] = list = [];
         if (!list.Contains(person.Id)) list.Add(person.Id);
+        var name = NameKeyNoDate($"{person.Given} {person.Middle}", person.Family);
+        if (!byNameBaptism.TryGetValue(name, out var baptismList)) byNameBaptism[name] = baptismList = [];
+        if (!baptismList.Contains(person.Id)) baptismList.Add(person.Id);
+
     }
 
     /// <summary>The legacy FirstName column holds every forename; the first token is the given name.</summary>
@@ -476,33 +582,77 @@ internal static class Program
         return parts.Length <= 1 ? (name, null) : (parts[0], string.Join(" ", parts.Skip(1)));
     }
 
-    private static string NameKey(string given, string family, DateOnly? birth) =>
+        private static string NameKey(string given, string family, DateOnly? birth) =>
         $"{Normalize(given)}|{Normalize(family)}|{birth:yyyy-MM-dd}";
 
-    private static Guid NewPersonId(string? churchId, string given, string family, DateOnly? birth) =>
-        DeterministicId(churchId is not null ? $"church:{churchId}" : $"name:{NameKey(given, family, birth)}");
+    private static string NameKeyNoDate(string given, string family) =>
+        $"{Normalize(given)}|{Normalize(family)}";
+
+
+        private static Guid NewPersonId(string? churchId, string given, string family, DateOnly? birth, DateOnly? baptism, SourceRow row) =>
+        DeterministicId(churchId is not null
+            ? $"church:{churchId}"
+            : birth is not null ? $"name:{NameKey(given, family, birth)}"
+            : baptism is not null ? $"name-baptism:{NameKeyNoDate(given, family)}|{baptism:yyyy-MM-dd}"
+            : $"name-row:{row.Sheet}|{row.Number}|{row.Values.GetValueOrDefault("__WeddingSide", "single")}");
+
 
     private static Dictionary<Guid, KnownPerson> LoadPeople(SqliteConnection connection, SqliteTransaction transaction)
     {
         var people = new Dictionary<Guid, KnownPerson>();
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText = "SELECT RecordId,ChurchDbId,GivenName,MiddleName,FamilyName,BirthDate FROM People";
+                command.CommandText = "SELECT RecordId,ChurchDbId,GivenName,MiddleName,FamilyName,BirthDate,BaptismDate FROM People";
+
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
             if (!Guid.TryParse(reader.GetString(0), out var id)) continue;
             DateOnly? birth = null;
+                        DateOnly? baptism = null;
             if (!reader.IsDBNull(5) && TryParseDate(reader.GetString(5), out var parsedBirth)) birth = parsedBirth;
+            if (!reader.IsDBNull(6) && TryParseDate(reader.GetString(6), out var parsedBaptism)) baptism = parsedBaptism;
             people[id] = new KnownPerson(
+
                 id,
                 reader.IsDBNull(1) ? null : reader.GetString(1),
                 reader.GetString(2),
                 reader.IsDBNull(3) ? null : reader.GetString(3),
                 reader.GetString(4),
-                birth);
+                                                birth, baptism);
+
+
         }
-        return people;
+                return people;
+    }
+
+    private static void LoadBaptismDates(SqliteConnection connection, SqliteTransaction transaction, Dictionary<Guid, KnownPerson> people)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT PersonRecordId,SacramentDate FROM Sacraments WHERE SacramentType='baptism' AND SacramentDate IS NOT NULL";
+        using var reader = command.ExecuteReader();
+        while (reader.Read() && Guid.TryParse(reader.GetString(0), out var id) && people.TryGetValue(id, out var person) && TryParseDate(reader.GetString(1), out var date))
+            if (person.Baptism is null) people[id] = person with { Baptism = date };
+    }
+
+        private static void WarnSuspiciousMarriage(SourceRow row, KnownPerson person, DateOnly? birth, DateOnly? baptism)
+    {
+        if (row.Map.Type != Marriage) return;
+        var wedding = DateField(row, row.Map.Date, "WedDate");
+        if (wedding is null)
+            Warn(row, "missing-marriage-date", person.ChurchId, "WedDate", "marriage record has no usable wedding date");
+        if (Value(row, row.Map.Place) is null)
+            Warn(row, "missing-marriage-place", person.ChurchId, "WedPlace", "marriage record has no usable place");
+        if (Value(row, row.Map.SponsorOne) is null && Value(row, row.Map.SponsorTwo) is null)
+            Warn(row, "missing-witnesses", person.ChurchId, "Witness1/Witness2", "marriage record has no witnesses recorded");
+
+        if (wedding is not null && baptism is not null && baptism > wedding)
+            Warn(row, "suspicious-date-order", person.ChurchId, "BaptDate/WedDate", $"baptism date {baptism:yyyy-MM-dd} is after wedding date {wedding:yyyy-MM-dd}");
+        if (baptism is null)
+            Warn(row, "missing-baptism-date", person.ChurchId, "BaptDate", "marriage person has no baptism date; identity match is less reliable");
+        if (birth is not null && wedding is not null && birth > wedding)
+            Warn(row, "suspicious-date-order", person.ChurchId, "BirthDate/WedDate", $"birth date {birth:yyyy-MM-dd} is after wedding date {wedding:yyyy-MM-dd}");
     }
 
     private static void InsertPerson(SqliteConnection connection, SqliteTransaction transaction, KnownPerson person, SourceRow row)
@@ -565,10 +715,21 @@ internal static class Program
         foreach (var column in row.Map.Details)
             if (Value(row, column) is { } note) parts.Add(note);
 
-        if (row.Map.Type == Baptism)
+                if (row.Map.Type == Baptism)
         {
             if (Value(row, "B-ProxyF") is { } proxyFather) parts.Add($"Proxy/witness (godfather): {proxyFather}");
             if (Value(row, "B-ProxyM") is { } proxyMother) parts.Add($"Proxy/witness (godmother): {proxyMother}");
+        }
+        else if (row.Map.Type == Marriage)
+        {
+            var side = row.Values.GetValueOrDefault("__WeddingSide", "G");
+            var residence = Value(row, side == "G" ? "ResidenceG" : "ResidenceB");
+            var city = Value(row, side == "G" ? "CityG" : "CityB");
+            if (residence is not null || city is not null)
+                parts.Add($"Residence: {string.Join(", ", new[] { residence, city }.Where(v => v is not null))}");
+            foreach (var column in new[] { "Chancery", "Bans", "MixRel", "DispCult", "FormMarr" })
+                if (Value(row, column) is { } flag && !flag.Equals("FALSE", StringComparison.OrdinalIgnoreCase) && flag != "0")
+                    parts.Add($"{column}: {flag}");
         }
         else
         {
@@ -577,6 +738,7 @@ internal static class Program
             if (residence is not null || city is not null)
                 parts.Add($"Residence: {string.Join(", ", new[] { residence, city }.Where(v => v is not null))}");
         }
+
 
         return parts.Count == 0 ? null : string.Join(" | ", parts);
     }
@@ -645,7 +807,7 @@ internal static class Program
         Bind(command, "$record", Guid.Empty.ToString());
         Bind(command, "$user", Environment.UserName);
         Bind(command, "$when", DateTimeOffset.UtcNow.ToString("O"));
-        Bind(command, "$summary", $"Legacy import: {rows} rows, {people} people created, {sacraments} sacrament records");
+        Bind(command, "$summary", $"Legacy import: {rows} rows, {people} people created, {sacraments} entries");
         command.ExecuteNonQuery();
     }
 
@@ -664,7 +826,8 @@ internal static class Program
 
     private static Options ParseArguments(string[] args)
     {
-        const string usage = "Usage: --input <legacy-sacraments.xlsm> --database <MemberRecords.sqlite> [--lookup Lookup.xlsx] [--commit] [--report report.csv]";
+                const string usage = "Usage: --input <legacy-sacraments.xlsm|Weddings.csv> --database <MemberRecords.sqlite> [--lookup Lookup.xlsx] [--commit] [--report report.csv]";
+
         string? input = null, database = null, report = null, lookup = null;
         var commit = false;
         for (var n = 0; n < args.Length; n++)

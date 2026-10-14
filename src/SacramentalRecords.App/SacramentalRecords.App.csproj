@@ -3,7 +3,7 @@
     <OutputType>WinExe</OutputType><TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>assets\stj.ico</ApplicationIcon>
-    <AssemblyVersion>1.0.9</AssemblyVersion>
+    <AssemblyVersion>1.1.1</AssemblyVersion>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\SacramentalRecords.Application\SacramentalRecords.Application.csproj" />

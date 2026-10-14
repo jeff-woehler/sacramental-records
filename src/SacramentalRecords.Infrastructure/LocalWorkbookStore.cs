@@ -73,7 +73,7 @@ public sealed class LocalWorkbookStore(LocalWorkbookOptions options) : IRegistry
             Put(auditRow, auditHeaders, "User", Environment.UserName);
             Put(auditRow, auditHeaders, "Operation", "delete");
             Put(auditRow, auditHeaders, "OccurredUtc", DateTimeOffset.UtcNow);
-            Put(auditRow, auditHeaders, "Summary", "Deleted person and associated sacrament records");
+            Put(auditRow, auditHeaders, "Summary", "Deleted person and associated entries");
             ResizeTable(book, auditSheet, options.AuditTable);
             book.Save();
         }
@@ -119,7 +119,7 @@ public sealed class LocalWorkbookStore(LocalWorkbookOptions options) : IRegistry
             Put(auditRow, auditHeaders, "User", Environment.UserName);
             Put(auditRow, auditHeaders, "Operation", "delete");
             Put(auditRow, auditHeaders, "OccurredUtc", DateTimeOffset.UtcNow);
-            Put(auditRow, auditHeaders, "Summary", "Deleted sacrament record");
+            Put(auditRow, auditHeaders, "Summary", "Deleted entry");
             ResizeTable(book, auditSheet, options.AuditTable);
             book.Save();
         }

@@ -19,14 +19,14 @@ public partial class SacramentEditorWindow : Window
         _registry = registry;
         _personRecordId = personRecordId;
         _original = record;
-        foreach (var type in SacramentTypeCatalog.Types) TypeBox.Items.Add(new ComboBoxItem { Content = type.Label, Tag = type.Value });
-        HeadingText.Text = record is null ? "Add sacrament" : "Edit sacrament";
+        foreach (var type in EntryTypeCatalog.Types) TypeBox.Items.Add(new ComboBoxItem { Content = type.Label, Tag = type.Value });
+        HeadingText.Text = record is null ? "Add entry" : "Edit entry";
         if (record is null) TypeBox.SelectedIndex = 0;
         else
         {
             // Stored values are canonical keys; accept legacy/display values when loading
             // so an existing record still selects the correct ComboBox item.
-            var canonicalType = SacramentTypeCatalog.Canonicalize(record.SacramentType);
+            var canonicalType = EntryTypeCatalog.Canonicalize(record.SacramentType);
             TypeBox.SelectedItem = TypeBox.Items.OfType<ComboBoxItem>()
                 .FirstOrDefault(item => Equals(item.Tag, canonicalType));
             DatePicker.SelectedDate = record.SacramentDate?.ToDateTime(TimeOnly.MinValue);
@@ -88,7 +88,7 @@ public partial class SacramentEditorWindow : Window
         var type = (TypeBox.SelectedItem as ComboBoxItem)?.Tag?.ToString();
         if (string.IsNullOrWhiteSpace(type))
         {
-            MessageBox.Show(this, "Select a sacrament type.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, "Select an entry type.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         var record = new SacramentRecord(_original?.RecordId ?? Guid.NewGuid(), _original?.PersonRecordId ?? _personRecordId,
@@ -110,7 +110,7 @@ public partial class SacramentEditorWindow : Window
         }
         catch (RecordConflictException ex) { MessageBox.Show(this, ex.Message, "Record changed", MessageBoxButton.OK, MessageBoxImage.Warning); }
         catch (ValidationException ex) { MessageBox.Show(this, ex.Message, "Validation", MessageBoxButton.OK, MessageBoxImage.Warning); }
-        catch (Exception ex) { MessageBox.Show(this, ex.Message, "Unable to save sacrament", MessageBoxButton.OK, MessageBoxImage.Error); }
+        catch (Exception ex) { MessageBox.Show(this, ex.Message, "Unable to save entry", MessageBoxButton.OK, MessageBoxImage.Error); }
         finally { Mouse.OverrideCursor = null; }
     }
 

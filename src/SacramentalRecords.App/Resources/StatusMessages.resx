@@ -56,8 +56,8 @@
     <value>People refreshed. Local changes are not yet published.</value>
   </data>
   <data name="PersonRecordSummary" xml:space="preserve">
-    <value>Record ID: {0} · {1} sacrament record(s)</value>
-    <comment>{0} = person record ID, {1} = number of sacrament records</comment>
+    <value>Record ID: {0} · Entries: {1}</value>
+    <comment>{0} = person record ID, {1} = number of entries</comment>
   </data>
   <data name="CertificateSaved" xml:space="preserve">
     <value>Baptismal certificate saved to {0}</value>

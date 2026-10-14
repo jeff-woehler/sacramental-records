@@ -84,7 +84,7 @@ public partial class MainWindow : Window
             _registry = new RegistryService(_packageStore);
             FileSettings["SACRAMENTAL_RECORDS_PACKAGE"] = _packagePath;
             SaveFileSettings();
-            ModeText.Text = "LOCAL SQLITE SESSION — synchronized package";
+            ModeText.Text = Path.GetFileName(_packagePath);
             StatusText.Text = StatusMessages.UsingPackage(Path.GetFileName(_packagePath));
             _ = RefreshPeopleAsync();
         }

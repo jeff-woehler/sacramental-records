@@ -6,8 +6,8 @@
         PreviewKeyDown="Window_PreviewKeyDown">
   <Window.Resources>
     <app:StatusDisplayConverter x:Key="StatusDisplayConverter" />
-    <app:SacramentTypeDisplayConverter x:Key="SacramentTypeDisplayConverter" />
-    <app:SacramentNameLabelConverter x:Key="SacramentNameLabelConverter" />
+    <app:EntryTypeDisplayConverter x:Key="EntryTypeDisplayConverter" />
+    <app:EntryNameLabelConverter x:Key="EntryNameLabelConverter" />
   </Window.Resources>
   <Grid Margin="32">
     <Grid.RowDefinitions>
@@ -47,7 +47,7 @@
         <StackPanel Grid.Column="2"><TextBlock Text="BAPTISM DATE" Style="{StaticResource CardLabel}"/><TextBlock x:Name="BaptismDateText" FontSize="15" TextWrapping="Wrap"/></StackPanel>
       </Grid>
     </GroupBox>
-    <GroupBox Grid.Row="2" Margin="0,8,0,0" Header="Sacrament records">
+    <GroupBox Grid.Row="2" Margin="0,8,0,0" Header="Register Entries">
       <ListBox x:Name="SacramentsGrid" BorderThickness="0" Background="Transparent" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="False" ScrollViewer.PanningMode="VerticalOnly" MouseDoubleClick="SacramentsGrid_MouseDoubleClick" KeyDown="SacramentsGrid_KeyDown">
         <ListBox.Template>
           <ControlTemplate TargetType="ListBox">
@@ -55,7 +55,7 @@
               <StackPanel>
                 <ItemsPresenter />
                 <Border Background="{StaticResource SurfaceMutedBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="10" MinHeight="82" Padding="12" Margin="0,0,0,8">
-                  <Button Content="Add sacrament record" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Click="AddSacrament_Click" ToolTip="New sacrament (Ctrl+N)" />
+                  <Button Content="Add register entry" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Click="AddSacrament_Click" ToolTip="New entry (Ctrl+N)" />
                 </Border>
               </StackPanel>
             </ScrollViewer>
@@ -68,17 +68,17 @@
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                 <DockPanel Grid.Row="0" Margin="0,0,0,8">
                   <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                    <TextBlock Text="{Binding SacramentType, Converter={StaticResource SacramentTypeDisplayConverter}}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+                    <TextBlock Text="{Binding SacramentType, Converter={StaticResource EntryTypeDisplayConverter}}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
                     <TextBlock Text="  ·  " FontSize="18" Foreground="{StaticResource MutedBrush}"/>
                     <TextBlock Text="{Binding SacramentDate, StringFormat={}{0:d}, TargetNullValue=—}" FontSize="18" FontWeight="SemiBold"/>
                   </StackPanel>
                   <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="Edit" Padding="10,5" Click="EditSacrament_Click" ToolTip="Edit sacrament (Enter or double-click)"/><Button Content="Delete" Padding="10,5" Margin="6,0,0,0" Style="{StaticResource DangerButton}" Click="DeleteSacrament_Click" ToolTip="Delete sacrament (Delete)"/>
+                    <Button Content="Edit" Padding="10,5" Click="EditSacrament_Click" ToolTip="Edit entry (Enter or double-click)"/><Button Content="Delete" Padding="10,5" Margin="6,0,0,0" Style="{StaticResource DangerButton}" Click="DeleteSacrament_Click" ToolTip="Delete entry (Delete)"/>
                   </StackPanel>
                 </DockPanel>
                 <Grid Grid.Row="1">
                   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                  <StackPanel Margin="0,0,12,0"><TextBlock Text="{Binding SacramentType, Converter={StaticResource SacramentNameLabelConverter}}" Style="{StaticResource CardLabel}"/><TextBlock Text="{Binding Name, TargetNullValue=—}" TextWrapping="Wrap"/></StackPanel>
+                  <StackPanel Margin="0,0,12,0"><TextBlock Text="{Binding SacramentType, Converter={StaticResource EntryNameLabelConverter}}" Style="{StaticResource CardLabel}"/><TextBlock Text="{Binding Name, TargetNullValue=—}" TextWrapping="Wrap"/></StackPanel>
                   <StackPanel Grid.Column="1" Margin="0,0,12,0"><TextBlock Text="SPONSOR 1" Style="{StaticResource CardLabel}"/><TextBlock Text="{Binding SponsorOne, TargetNullValue=—}" TextWrapping="Wrap"/></StackPanel>
                   <StackPanel Grid.Column="2" Margin="0,0,12,0"><TextBlock Text="SPONSOR 2" Style="{StaticResource CardLabel}"/><TextBlock Text="{Binding SponsorTwo, TargetNullValue=—}" TextWrapping="Wrap"/></StackPanel>
                   <StackPanel Grid.Column="3" Margin="0,0,12,0"><TextBlock Text="Register Location" Style="{StaticResource CardLabel}"/><TextBlock TextWrapping="Wrap"><Run Text="{Binding Volume, TargetNullValue=—}"/><Run Text="-"/><Run Text="{Binding Page, TargetNullValue=—}"/><Run Text="-"/><Run Text="{Binding Item, TargetNullValue=—}"/></TextBlock></StackPanel>

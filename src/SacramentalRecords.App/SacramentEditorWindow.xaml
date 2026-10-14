@@ -1,7 +1,7 @@
 <Window x:Class="SacramentalRecords.App.SacramentEditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Sacrament" Width="800" Height="800" MinHeight="700" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Title="Entry" Width="800" Height="800" MinHeight="700" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         PreviewKeyDown="Window_PreviewKeyDown">
   <Window.Resources>
     <Style TargetType="ComboBoxItem">
@@ -14,7 +14,7 @@
       <Setter Property="Padding" Value="8,3" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
-    <DataTemplate x:Key="SacramentTypeItemTemplate">
+    <DataTemplate x:Key="EntryTypeItemTemplate">
       <TextBlock Text="{Binding Content}"
                  FontFamily="Segoe UI"
                  FontSize="17"
@@ -34,8 +34,8 @@
       <TextBlock Grid.Row="1" x:Name="HeadingText" Style="{StaticResource DisplayText}" FontSize="28" FontWeight="Bold" Margin="0,5,0,24"/>
       <Grid Grid.Row="2" Margin="0,0,0,12">
         <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/><ColumnDefinition Width="24"/><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-        <TextBlock Text="Type *" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,12,0"/>
-        <ComboBox x:Name="TypeBox" Grid.Column="1" Margin="4" Height="40" Padding="8,0" FontFamily="Segoe UI" FontSize="17" Foreground="{StaticResource InkBrush}" HorizontalContentAlignment="Left" VerticalContentAlignment="Center" ItemTemplate="{StaticResource SacramentTypeItemTemplate}"/>
+        <TextBlock Text="Entry Type *" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,12,0"/>
+        <ComboBox x:Name="TypeBox" Grid.Column="1" Margin="4" Height="40" Padding="8,0" FontFamily="Segoe UI" FontSize="17" Foreground="{StaticResource InkBrush}" HorizontalContentAlignment="Left" VerticalContentAlignment="Center" ItemTemplate="{StaticResource EntryTypeItemTemplate}"/>
         <TextBlock Grid.Column="3" Text="Date" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,12,0"/>
         <DatePicker x:Name="DatePicker" Grid.Column="4" Height="40" FontSize="15" Foreground="{StaticResource InkBrush}" VerticalContentAlignment="Center" HorizontalContentAlignment="Stretch"/>
       </Grid>
@@ -83,7 +83,7 @@
         <TextBlock Text="Details" FontWeight="SemiBold" Margin="0,0,0,5"/><TextBox x:Name="DetailsBox" AcceptsReturn="True" TextWrapping="Wrap" Height="75" Margin="4"/>
         <TextBlock Text="Canonical notations" FontWeight="SemiBold" Margin="0,14,0,5"/><TextBox x:Name="NotationsBox" AcceptsReturn="True" TextWrapping="Wrap" Height="75" Margin="4"/>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
-          <Button Content="Cancel" IsCancel="True" Width="100" Margin="0,0,10,0" Style="{StaticResource SecondaryButton}" ToolTip="Cancel (Esc)"/><Button Content="Save sacrament" IsDefault="True" Width="140" Click="Save_Click" ToolTip="Save sacrament (Enter or Ctrl+S)"/>
+          <Button Content="Cancel" IsCancel="True" Width="100" Margin="0,0,10,0" Style="{StaticResource SecondaryButton}" ToolTip="Cancel (Esc)"/><Button Content="Save entry" IsDefault="True" Width="140" Click="Save_Click" ToolTip="Save entry (Enter or Ctrl+S)"/>
         </StackPanel>
       </StackPanel>
     </Grid>

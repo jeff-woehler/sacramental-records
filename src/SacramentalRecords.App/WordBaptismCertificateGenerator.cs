@@ -122,7 +122,7 @@ internal static class WordBaptismCertificateGenerator
 
     private static SacramentRecord? FindSacrament(IEnumerable<SacramentRecord> sacraments, string type) =>
         sacraments.FirstOrDefault(record =>
-            string.Equals(SacramentTypeCatalog.Canonicalize(record.SacramentType), type, StringComparison.OrdinalIgnoreCase));
+            string.Equals(EntryTypeCatalog.Canonicalize(record.SacramentType), type, StringComparison.OrdinalIgnoreCase));
 
     private static void SetSacramentProperties(
         dynamic properties,

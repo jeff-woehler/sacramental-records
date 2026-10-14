@@ -42,10 +42,10 @@ public partial class PersonDetailWindow : Window
             var records = await _registry.GetSacramentsAsync(person.RecordId);
             _sacraments = records;
             _baptism = records.FirstOrDefault(record =>
-                string.Equals(SacramentTypeCatalog.Canonicalize(record.SacramentType), "baptism", StringComparison.OrdinalIgnoreCase));
+                string.Equals(EntryTypeCatalog.Canonicalize(record.SacramentType), "baptism", StringComparison.OrdinalIgnoreCase));
             BaptismDateText.Text = (_baptism?.SacramentDate ?? person.BaptismDate)?.ToString("d", CultureInfo.CurrentCulture) ?? "—";
             SacramentsGrid.ItemsSource = records
-                .OrderBy(record => SacramentTypeCatalog.SortOrder(record.SacramentType))
+                .OrderBy(record => EntryTypeCatalog.SortOrder(record.SacramentType))
                 .ThenByDescending(record => record.SacramentDate.HasValue)
                 .ThenByDescending(record => record.SacramentDate);
             StatusBarText.Text = StatusMessages.PersonRecordSummary(person.RecordId, records.Count);
@@ -158,20 +158,23 @@ public partial class PersonDetailWindow : Window
     {
         var record = (sender as FrameworkElement)?.DataContext as SacramentRecord ?? SacramentsGrid.SelectedItem as SacramentRecord;
         if (record is null) return;
-        var type = SacramentTypeCatalog.Display(record.SacramentType);
-        if (MessageBox.Show(this, $"Delete this {type} sacrament record? This cannot be undone.", "Confirm deletion", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        var type = EntryTypeCatalog.Display(record.SacramentType);
+                        var description = IsSacramentType(record.SacramentType) ? $"{type.ToLowerInvariant()} sacrament record" : $"{type.ToLowerInvariant()} entry";
+        if (MessageBox.Show(this, $"Delete this {description}? This cannot be undone.", "Confirm deletion", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         try
         {
             await _registry.DeleteSacramentAsync(record.RecordId);
             if (_person is not null) await LoadAsync(_person.RecordId);
         }
         catch (RecordConflictException ex) { MessageBox.Show(this, ex.Message, "Record changed", MessageBoxButton.OK, MessageBoxImage.Warning); if (_person is not null) await LoadAsync(_person.RecordId); }
-        catch (Exception ex) { MessageBox.Show(this, ex.Message, "Unable to delete sacrament", MessageBoxButton.OK, MessageBoxImage.Error); }
+        catch (Exception ex) { MessageBox.Show(this, ex.Message, "Unable to delete entry", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
+
+    private static bool IsSacramentType(string? value) => EntryTypeCatalog.Canonicalize(value) is "baptism" or "first_communion" or "confirmation" or "marriage" or "holy_orders";
 
     private async void Delete_Click(object sender, RoutedEventArgs e)
     {
-        if (_person is null || MessageBox.Show(this, "Delete this person and all sacrament records? This cannot be undone.", "Confirm deletion", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (_person is null || MessageBox.Show(this, "Delete this person and all entries? This cannot be undone.", "Confirm deletion", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         try { await _registry.DeletePersonAsync(_person.RecordId); DialogResult = true; }
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Unable to delete person", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
