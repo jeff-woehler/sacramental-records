@@ -32,7 +32,7 @@ if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed." }
 
 # Each PC keeps its own settings; parish data never ships with the program.
 Remove-Item (Join-Path $publishDir 'SacramentalRecords.settings.json') -ErrorAction SilentlyContinue
-$forbidden = Get-ChildItem $publishDir -Recurse -File -Include *.dbpackage, *.bak, *.sqlite, *.csv, *.xlsx, *.lnk
+$forbidden = Get-ChildItem $publishDir -Recurse -File -Include *.srdb, *.dbpackage, *.bak, *.sqlite, *.csv, *.xlsx, *.lnk
 if ($forbidden) { throw "Refusing to publish data files: $($forbidden.FullName -join ', ')" }
 
 $packageName = "SacramentalRecords-$version.zip"

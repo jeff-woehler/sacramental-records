@@ -12,7 +12,7 @@ WPF desktop client
   -> Verified SQLite package in a shared file store
 ```
 
-The application runs on Windows and uses a packaged SQLite database as its portable data format. A selected `MemberRecords.dbpackage` file is the shared store; the live SQLite database is extracted to the user's local application-data directory and is never opened directly from the shared location. A sibling `.lock` file is held for the lifetime of the session so that only one application session edits a package at a time. Users should not manually edit a package or open two sessions against the same package.
+The application runs on Windows and uses a packaged SQLite database as its portable data format. A selected `MemberRecords.srdb` file is the shared store; the live SQLite database is extracted to the user's local application-data directory and is never opened directly from the shared location. A sibling `.lock` file is held for the lifetime of the session so that only one application session edits a package at a time. Users should not manually edit a package or open two sessions against the same package.
 
 ## What the application does
 
@@ -26,15 +26,17 @@ The application runs on Windows and uses a packaged SQLite database as its porta
 
 ## SQLite package workflow
 
-`SqlitePackageStore` uses `Microsoft.Data.Sqlite` and transactions for reads and writes. On startup it verifies that the selected package exists, acquires `MemberRecords.dbpackage.lock`, extracts `MemberRecords.sqlite` into a unique local session directory, and initializes the schema and indexes. The package contains only the SQLite database entry, so journals, WAL files, and temporary database files remain local to the session.
+`SqlitePackageStore` uses `Microsoft.Data.Sqlite` and transactions for reads and writes. On startup it verifies that the selected package exists, acquires `MemberRecords.srdb.lock`, extracts `MemberRecords.sqlite` into a unique local session directory, and initializes the schema and indexes. The package contains only the SQLite database entry, so journals, WAL files, and temporary database files remain local to the session.
 
 Edits are saved immediately to the local SQLite session. **Publish package** creates a temporary ZIP in the same directory as the selected package, verifies that it contains the database entry, makes a timestamped backup of the previous package, and replaces the package. The session lock remains held after publishing so work can continue. Closing the application releases the local session and lock; if changes have not been published, the user is warned and can publish, discard the local session, or continue working. If publishing fails, the local changes remain available for another attempt.
 
 The package path and update-manifest location are stored in `SacramentalRecords.settings.json` beside the application executable. The package setting has this form:
 
+On the first launch after this extension change, if the setting still points to a `.dbpackage` file, the application safely renames it to the matching `.srdb` name, updates the setting, and then opens the renamed file. It does not overwrite an existing `.srdb` file, and it waits until a legacy package is not in use before renaming it. Staff therefore do not need to rename the shared file manually.
+
 ```json
 {
-  "SACRAMENTAL_RECORDS_PACKAGE": "C:\\Records\\MemberRecords.dbpackage"
+  "SACRAMENTAL_RECORDS_PACKAGE": "C:\\Records\\MemberRecords.srdb"
 }
 ```
 

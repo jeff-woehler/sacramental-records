@@ -14,6 +14,9 @@ namespace SacramentalRecords.App;
 public partial class MainWindow : Window
 {
     private const string SettingsFileName = "SacramentalRecords.settings.json";
+    private const string PackageSettingKey = "SACRAMENTAL_RECORDS_PACKAGE";
+    private const string LegacyPackageExtension = ".dbpackage";
+    private const string PackageExtension = ".srdb";
     internal const string BaptismTemplateSettingKey = "SACRAMENTAL_RECORDS_BAPTISM_TEMPLATE";
     internal static readonly Dictionary<string, string?> FileSettings = LoadFileSettings();
 
@@ -29,7 +32,7 @@ public partial class MainWindow : Window
         StatusText.Text = StatusMessages.OpenPackageToBegin;
         Closing += MainWindow_Closing;
 
-        var configuredPath = FileSettings.GetValueOrDefault("SACRAMENTAL_RECORDS_PACKAGE");
+                var configuredPath = FileSettings.GetValueOrDefault(PackageSettingKey);
         if (!string.IsNullOrWhiteSpace(configuredPath)) EnableLocalAdmin(configuredPath);
     }
 
@@ -70,7 +73,11 @@ public partial class MainWindow : Window
 
     private void LocalAdmin_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Filter = "SQLite database packages (*.dbpackage)|*.dbpackage", Title = "Select the synchronized database package" };
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Sacramental Records packages (*.srdb;*.dbpackage)|*.srdb;*.dbpackage|All files (*.*)|*.*",
+            Title = "Select the synchronized database package"
+        };
         if (dialog.ShowDialog(this) == true) EnableLocalAdmin(dialog.FileName);
     }
 
@@ -80,8 +87,9 @@ public partial class MainWindow : Window
         window.ShowDialog();
     }
 
-        private async void EnableLocalAdmin(string path)
+            private async void EnableLocalAdmin(string path)
     {
+        path = MigrateLegacyPackagePath(path);
         if (!File.Exists(path)) { StatusText.Text = StatusMessages.PackageNotFound; return; }
 
         if (_packageStore is not null)
@@ -99,7 +107,7 @@ public partial class MainWindow : Window
                                 _packageStore = new SqlitePackageStore(_packagePath);
                 _registry = new RegistryService(_packageStore);
                 SetReadWriteMode();
-                FileSettings["SACRAMENTAL_RECORDS_PACKAGE"] = _packagePath;
+                FileSettings[PackageSettingKey] = _packagePath;
                 SaveFileSettings();
                 ModeText.Text = Path.GetFileName(_packagePath);
                 StatusText.Text = StatusMessages.UsingPackage(Path.GetFileName(_packagePath));
@@ -174,9 +182,60 @@ public partial class MainWindow : Window
             EditButton.Content = "Edit";
         }
 
+        private static string MigrateLegacyPackagePath(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        if (!fullPath.EndsWith(LegacyPackageExtension, StringComparison.OrdinalIgnoreCase)) return fullPath;
+
+        var newPath = Path.ChangeExtension(fullPath, PackageExtension);
+        if (!File.Exists(fullPath))
+        {
+            // This also repairs settings after a successful rename if the settings
+            // file could not be written (for example, a read-only install folder).
+            if (File.Exists(newPath))
+            {
+                FileSettings[PackageSettingKey] = newPath;
+                SaveFileSettings();
+                return newPath;
+            }
+
+            return fullPath;
+        }
+
+        // Never rename over an existing file. If both names exist, prefer the new
+        // name and leave the legacy file untouched for manual recovery.
+        if (File.Exists(newPath))
+        {
+            FileSettings[PackageSettingKey] = newPath;
+            SaveFileSettings();
+            return newPath;
+        }
+
+        // A live legacy lock means another session is using the old name. Leave it
+        // alone; the migration will be retried on the next startup.
+        if (File.Exists(fullPath + ".lock") && !SqlitePackageStore.TryRemoveStaleLock(fullPath)) return fullPath;
+
+        try
+        {
+            File.Move(fullPath, newPath);
+            FileSettings[PackageSettingKey] = newPath;
+            SaveFileSettings();
+            return newPath;
+        }
+        catch (IOException)
+        {
+            return fullPath;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return fullPath;
+        }
+    }
+
     internal static void SaveFileSettings()
 
     {
+
         try
         {
             var path = Path.Combine(AppContext.BaseDirectory, SettingsFileName);
