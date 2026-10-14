@@ -120,7 +120,8 @@ internal static class Program
 
     private sealed record Options(string Input, string Database, bool Commit, string Report, string? Lookup);
         private sealed record SourceRow(string Sheet, int Number, Mapping Map, Dictionary<string, string> Values);
-    private sealed record KnownPerson(Guid Id, string? ChurchId, string Given, string? Middle, string Family, DateOnly? Birth, DateOnly? Baptism);
+        private sealed record KnownPerson(Guid Id, string? ChurchId, string Given, string? Middle, string Family, DateOnly? Birth, DateOnly? Baptism, string? Father, string? Mother);
+
 
 
     private static readonly List<string> Report = ["Sheet,Row,Type,Severity,Action,PersonId,Field,Message"];
@@ -154,11 +155,15 @@ internal static class Program
             using var transaction = connection.BeginTransaction();
 
                         var people = LoadPeople(connection, transaction);
-            LoadBaptismDates(connection, transaction, people);
+                        LoadBaptismDates(connection, transaction, people);
+            ReportDuplicatePeople(people);
             var byChurchId = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
+
             var byNameKey = new Dictionary<string, List<Guid>>(StringComparer.Ordinal);
-            var byNameBaptism = new Dictionary<string, List<Guid>>(StringComparer.Ordinal);
-            foreach (var person in people.Values) Index(person, byChurchId, byNameKey, byNameBaptism);
+                        var byNameBaptism = new Dictionary<string, List<Guid>>(StringComparer.Ordinal);
+            var byBirthBaptismFamily = new Dictionary<string, List<Guid>>(StringComparer.Ordinal);
+            foreach (var person in people.Values) Index(person, byChurchId, byNameKey, byNameBaptism, byBirthBaptismFamily);
+
 
 
             var seenSacraments = new HashSet<(Guid Person, string Type)>();
@@ -180,17 +185,19 @@ internal static class Program
                     var churchId = Value(row, IdColumns);
                     var birth = DateField(row, BirthColumns, "BirthDate");
                                         var baptism = DateField(row, PersonBaptDateColumns, "BaptDate");
-                    var person = Resolve(row, people, byChurchId, byNameKey, byNameBaptism, churchId, given, family, birth, baptism);
+                                        var person = Resolve(row, people, byChurchId, byNameKey, byNameBaptism, byBirthBaptismFamily, churchId, given, family, birth, baptism);
+
 
                     var isNew = person is null;
                     if (person is null)
                     {
-                                                person = new KnownPerson(NewPersonId(churchId, given, family, birth, baptism, row), churchId, firstName, middleName, family, birth, baptism);
+                                                person = new KnownPerson(NewPersonId(churchId, given, family, birth, baptism, row), churchId, firstName, middleName, family, birth, baptism, null, null);
 
 
                         InsertPerson(connection, transaction, person, row);
                         people[person.Id] = person;
-                                                Index(person, byChurchId, byNameKey, byNameBaptism);
+                                                Index(person, byChurchId, byNameKey, byNameBaptism, byBirthBaptismFamily);
+
 
                         created++;
                     }
@@ -216,9 +223,13 @@ internal static class Program
                 catch (Exception exception)
                 {
                     _errors++;
-                    var message = exception is SqliteException { SqliteErrorCode: 19 }
+                                        var message = exception is SqliteException { SqliteErrorCode: 19 }
                         ? "this source row has already been imported into this database; import into an empty database"
                         : exception.Message;
+                                        if (row.Map.Type == Marriage && !message.StartsWith(WeddingSubject(row) + ":", StringComparison.Ordinal))
+                        message = $"{WeddingSubject(row)}: {message}";
+
+
                     Report.Add(Csv(row.Sheet, row.Number.ToString(CultureInfo.InvariantCulture), row.Map.Type, "error",
                         "skipped", Value(row, IdColumns) ?? string.Empty, string.Empty, message));
                 }
@@ -524,34 +535,77 @@ internal static class Program
         Dictionary<Guid, KnownPerson> people,
         Dictionary<string, Guid> byChurchId,
         Dictionary<string, List<Guid>> byNameKey,
-        Dictionary<string, List<Guid>> byNameBaptism,
+                Dictionary<string, List<Guid>> byNameBaptism,
+        Dictionary<string, List<Guid>> byBirthBaptismFamily,
         string? churchId,
+
         string given,
         string family,
         DateOnly? birth,
         DateOnly? baptism)
 
     {
-        if (churchId is not null)
-            return byChurchId.TryGetValue(churchId, out var id) ? people[id] : null;
+                if (churchId is not null && byChurchId.TryGetValue(churchId, out var id))
+            return people[id];
 
-                var candidates = new List<Guid>();
+        // Legacy PersonId values are not globally reliable: the workbook contains the same
+        // person under different IDs (and occasional spelling variants). Birth date, baptism
+        // date, and surname are a safer reconciliation key when all three are present.
+        if (churchId is not null && birth is not null && baptism is not null)
+        {
+            var legacyCandidates = byBirthBaptismFamily.GetValueOrDefault(BirthBaptismFamilyKey(family, birth.Value, baptism.Value), []);
+            if (legacyCandidates.Count == 1)
+            {
+                Warn(row, "legacy-id-reconciled", churchId, "PersonId",
+                    $"legacy PersonId {churchId} differed, but matched an existing person by surname, birth date, and baptism date");
+                return people[legacyCandidates[0]];
+            }
+            if (legacyCandidates.Count > 1)
+                throw new InvalidDataException($"legacy PersonId {churchId} is unknown and {legacyCandidates.Count} people share the same surname, birth date, and baptism date");
+        }
+
+        var candidates = new List<Guid>();
+
         if (baptism is not null)
             candidates = byNameBaptism.GetValueOrDefault(NameKeyNoDate(given, family), [])
                 .Where(id => people[id].Baptism == baptism).ToList();
         else if (birth is not null)
             candidates = byNameKey.GetValueOrDefault(NameKey(given, family, birth), []);
-        else if (row.Map.Type == Marriage)
+                else if (row.Map.Type == Marriage)
         {
             candidates = byNameBaptism.GetValueOrDefault(NameKeyNoDate(given, family), []);
             if (candidates.Count == 1)
                 Warn(row, "weak-name-match", null, "PersonId", "marriage row has no birth or baptism date; matched on unique normalized name only");
         }
+        else if (churchId is not null)
+        {
+            // An unknown legacy PersonId is sufficient to create a new person. Birth date is
+            // required only when trying to identify an existing person without a legacy ID.
+            return null;
+        }
         else throw new InvalidDataException("no PersonId and no birth date; the person cannot be identified safely");
+
+        if (candidates.Count == 0) return null;
+        if (row.Map.Type == Marriage)
+                        candidates = FilterMarriageParentCandidates(row, candidates, people);
+            candidates = FilterMarriageCandidates(row, candidates, people);
+
         if (candidates.Count == 0) return null;
 
-        if (candidates.Count > 1)
-            throw new InvalidDataException($"no PersonId and {candidates.Count} existing people share this name and birth date");
+                if (candidates.Count > 1)
+
+        {
+            var criterion = baptism is not null ? $"name and baptism date {baptism:yyyy-MM-dd}" :
+                birth is not null ? $"name and birth date {birth:yyyy-MM-dd}" : "normalized name";
+                        var candidateDetails = string.Join("; ", candidates.Select(candidateId =>
+            {
+                var candidate = people[candidateId];
+                return $"{candidate.Id} (birth {candidate.Birth:yyyy-MM-dd}, baptism {candidate.Baptism:yyyy-MM-dd}, legacy id {candidate.ChurchId ?? "none"})";
+            }));
+            throw new InvalidDataException($"{WeddingSubject(row)}: no PersonId and {candidates.Count} existing people share this {criterion}; candidates: {candidateDetails}");
+
+        }
+
 
                 Warn(row, "name-match", null, "PersonId", baptism is null
             ? "no legacy PersonId; matched on name and birth date"
@@ -561,7 +615,8 @@ internal static class Program
     }
 
         private static void Index(KnownPerson person, Dictionary<string, Guid> byChurchId, Dictionary<string, List<Guid>> byNameKey,
-        Dictionary<string, List<Guid>> byNameBaptism)
+            Dictionary<string, List<Guid>> byNameBaptism, Dictionary<string, List<Guid>> byBirthBaptismFamily)
+
 
     {
         if (person.ChurchId is not null) byChurchId.TryAdd(person.ChurchId, person.Id);
@@ -569,8 +624,16 @@ internal static class Program
                 if (!byNameKey.TryGetValue(key, out var list)) byNameKey[key] = list = [];
         if (!list.Contains(person.Id)) list.Add(person.Id);
         var name = NameKeyNoDate($"{person.Given} {person.Middle}", person.Family);
-        if (!byNameBaptism.TryGetValue(name, out var baptismList)) byNameBaptism[name] = baptismList = [];
+                if (!byNameBaptism.TryGetValue(name, out var baptismList)) byNameBaptism[name] = baptismList = [];
         if (!baptismList.Contains(person.Id)) baptismList.Add(person.Id);
+        if (person.Birth is not null && person.Baptism is not null)
+        {
+            var birthBaptismKey = BirthBaptismFamilyKey(person.Family, person.Birth.Value, person.Baptism.Value);
+            if (!byBirthBaptismFamily.TryGetValue(birthBaptismKey, out var familyList)) byBirthBaptismFamily[birthBaptismKey] = familyList = [];
+            if (!familyList.Contains(person.Id)) familyList.Add(person.Id);
+        }
+
+
 
     }
 
@@ -585,8 +648,13 @@ internal static class Program
         private static string NameKey(string given, string family, DateOnly? birth) =>
         $"{Normalize(given)}|{Normalize(family)}|{birth:yyyy-MM-dd}";
 
-    private static string NameKeyNoDate(string given, string family) =>
+        private static string NameKeyNoDate(string given, string family) =>
         $"{Normalize(given)}|{Normalize(family)}";
+
+    private static string BirthBaptismFamilyKey(string family, DateOnly birth, DateOnly baptism) =>
+        $"{Normalize(family)}|{birth:yyyy-MM-dd}|{baptism:yyyy-MM-dd}";
+
+
 
 
         private static Guid NewPersonId(string? churchId, string given, string family, DateOnly? birth, DateOnly? baptism, SourceRow row) =>
@@ -618,25 +686,148 @@ internal static class Program
                 reader.IsDBNull(1) ? null : reader.GetString(1),
                 reader.GetString(2),
                 reader.IsDBNull(3) ? null : reader.GetString(3),
-                reader.GetString(4),
-                                                birth, baptism);
+                                reader.GetString(4),
+                birth, baptism, null, null);
+
 
 
         }
                 return people;
     }
 
+        private static void ReportDuplicatePeople(Dictionary<Guid, KnownPerson> people)
+    {
+        // This is deliberately a report-only pass. It never merges records automatically. The
+        // strongest useful duplicate signal in this source is matching family, birth date, baptism
+        // date, and parents, with a one-character given-name difference catching Garvin/Garwin.
+        var groups = people.Values
+            .Where(p => p.Birth is not null && p.Baptism is not null && p.Father is not null && p.Mother is not null)
+            .GroupBy(p => $"{Normalize(p.Family)}|{p.Birth:yyyy-MM-dd}|{p.Baptism:yyyy-MM-dd}|{Normalize(p.Father!)}|{Normalize(p.Mother!)}");
+        foreach (var group in groups)
+        {
+            var members = group.ToList();
+            for (var i = 0; i < members.Count; i++)
+            for (var j = i + 1; j < members.Count; j++)
+            {
+                var left = Normalize($"{members[i].Given} {members[i].Middle}");
+                var right = Normalize($"{members[j].Given} {members[j].Middle}");
+                if (left == right || Levenshtein(left, right) <= 1)
+                {
+                    _warnings++;
+                    Report.Add(Csv("(preflight)", string.Empty, string.Empty, "warning", "duplicate-person", members[i].Id.ToString(),
+                        members[j].Id.ToString(),
+                        $"possible duplicate ({Confidence(left, right)} confidence): {PersonSummary(members[i])} / {PersonSummary(members[j])}; same family, birth/baptism dates, and parents; review before merging"));
+                }
+            }
+        }
+    }
+
+    private static string PersonSummary(KnownPerson person) =>
+        $"{person.Given} {person.Middle} {person.Family} [birth {person.Birth:yyyy-MM-dd}, baptism {person.Baptism:yyyy-MM-dd}, legacy {person.ChurchId ?? "none"}]";
+
+    private static string Confidence(string left, string right) => left == right ? "very-high" : "high";
+
+    private static int Levenshtein(string left, string right)
+    {
+        var previous = Enumerable.Range(0, right.Length + 1).ToArray();
+        for (var i = 1; i <= left.Length; i++)
+        {
+            var current = new int[right.Length + 1];
+            current[0] = i;
+            for (var j = 1; j <= right.Length; j++)
+                current[j] = Math.Min(Math.Min(current[j - 1] + 1, previous[j] + 1), previous[j - 1] + (left[i - 1] == right[j - 1] ? 0 : 1));
+            previous = current;
+        }
+        return previous[right.Length];
+    }
+
     private static void LoadBaptismDates(SqliteConnection connection, SqliteTransaction transaction, Dictionary<Guid, KnownPerson> people)
+
     {
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText = "SELECT PersonRecordId,SacramentDate FROM Sacraments WHERE SacramentType='baptism' AND SacramentDate IS NOT NULL";
+                command.CommandText = "SELECT PersonRecordId,SacramentDate,FatherName,MotherName FROM Sacraments WHERE SacramentType='baptism' AND SacramentDate IS NOT NULL";
+
         using var reader = command.ExecuteReader();
-        while (reader.Read() && Guid.TryParse(reader.GetString(0), out var id) && people.TryGetValue(id, out var person) && TryParseDate(reader.GetString(1), out var date))
-            if (person.Baptism is null) people[id] = person with { Baptism = date };
+                while (reader.Read() && Guid.TryParse(reader.GetString(0), out var id) && people.TryGetValue(id, out var person) && TryParseDate(reader.GetString(1), out var date))
+        {
+            var father = reader.IsDBNull(2) ? null : reader.GetString(2);
+            var mother = reader.IsDBNull(3) ? null : reader.GetString(3);
+            if (person.Baptism is null || person.Father is null || person.Mother is null)
+                people[id] = person with
+                {
+                    Baptism = person.Baptism ?? date,
+                    Father = person.Father ?? father,
+                    Mother = person.Mother ?? mother
+                };
+        }
+
     }
 
+                private static List<Guid> FilterMarriageParentCandidates(SourceRow row, List<Guid> candidates, Dictionary<Guid, KnownPerson> people)
+        {
+            var sourceFather = Value(row, row.Map.Father);
+            var sourceMother = Value(row, row.Map.Mother);
+            if (sourceFather is null && sourceMother is null) return candidates;
+
+                        var matches = candidates.Where(id =>
+                (sourceFather is null || people[id].Father is not null && Normalize(people[id].Father!) == Normalize(sourceFather)) &&
+                (sourceMother is null || people[id].Mother is not null && Normalize(people[id].Mother!) == Normalize(sourceMother))).ToList();
+
+            if (matches.Count == 0 || matches.Count == candidates.Count) return candidates;
+
+            Warn(row, "parent-filtered-match", null, "PersonId",
+                $"parent names narrowed {candidates.Count} possible people to {matches.Count}; source parents: {sourceFather ?? "(blank)"} / {sourceMother ?? "(blank)"}");
+            return matches;
+        }
+
+        private static List<Guid> FilterMarriageCandidates(SourceRow row, List<Guid> candidates, Dictionary<Guid, KnownPerson> people)
+
+        {
+            var wedding = DateField(row, row.Map.Date, "WedDate");
+            if (wedding is null) return candidates;
+            var rejected = new List<(Guid Id, string Reason)>();
+            var survivors = new List<Guid>();
+            foreach (var id in candidates)
+            {
+                var person = people[id];
+                if (person.Birth is { } birth)
+                {
+                    var age = wedding.Value.Year - birth.Year - (wedding.Value < birth.AddYears(wedding.Value.Year - birth.Year) ? 1 : 0);
+                    if (birth > wedding) { rejected.Add((id, $"birth date {birth:yyyy-MM-dd} is after wedding")); continue; }
+                    if (age < 10) { rejected.Add((id, $"age would be {age}, below 10")); continue; }
+                    if (age > 100) { rejected.Add((id, $"age would be {age}, above 100")); continue; }
+                }
+                if (person.Baptism is { } baptism && baptism > wedding)
+                {
+                    rejected.Add((id, $"baptism date {baptism:yyyy-MM-dd} is after wedding"));
+                    continue;
+                }
+                survivors.Add(id);
+            }
+            if (rejected.Count > 0)
+                Warn(row, "date-filtered-candidate", null, "PersonId",
+                    $"rejected {rejected.Count} of {candidates.Count} possible people: {string.Join("; ", rejected.Select(r => r.Reason))}");
+            if (rejected.Count > 0 && survivors.Count == 1)
+                Warn(row, "date-filtered-match", null, "PersonId", "selected the only candidate with a plausible birth/baptism chronology");
+            return survivors;
+        }
+
+        private static string WeddingSubject(SourceRow row)
+
+        {
+            if (row.Map.Type != Marriage) return "source row";
+            var side = row.Values.GetValueOrDefault("__WeddingSide") switch
+            {
+                "G" => "groom",
+                "B" => "bride",
+                _ => "marriage party"
+            };
+            return $"{side} '{Name(row, FirstColumns)} {Name(row, LastColumns)}'";
+        }
+
         private static void WarnSuspiciousMarriage(SourceRow row, KnownPerson person, DateOnly? birth, DateOnly? baptism)
+
     {
         if (row.Map.Type != Marriage) return;
         var wedding = DateField(row, row.Map.Date, "WedDate");

@@ -9,12 +9,12 @@
         ShowInTaskbar="False"
         AllowsTransparency="True"
         Background="Transparent"
-        Icon="/assets/stj.ico">
+        Icon="/assets/sr.ico">
   <Border Margin="2" Background="{StaticResource PageBrush}" CornerRadius="34">
     <Border Margin="10" Padding="32" Background="{StaticResource SurfaceBrush}"
             BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="24">
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-      <Image Source="/assets/stj.png" Width="116" Height="116" Stretch="Uniform" />
+      <Image Source="/assets/sr.png" Width="116" Height="116" Stretch="Uniform" />
       <TextBlock Text="Sacramental Records" Style="{StaticResource DisplayText}"
                  FontSize="25" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,18,0,5" />
       <TextBlock Text="Parish Registry" Foreground="{StaticResource MutedBrush}"

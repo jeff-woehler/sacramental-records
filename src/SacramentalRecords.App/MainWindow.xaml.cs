@@ -14,6 +14,7 @@ namespace SacramentalRecords.App;
 public partial class MainWindow : Window
 {
     private const string SettingsFileName = "SacramentalRecords.settings.json";
+    internal const string BaptismTemplateSettingKey = "SACRAMENTAL_RECORDS_BAPTISM_TEMPLATE";
     internal static readonly Dictionary<string, string?> FileSettings = LoadFileSettings();
 
     private RegistryService? _registry;
@@ -73,25 +74,108 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog(this) == true) EnableLocalAdmin(dialog.FileName);
     }
 
-    private async void EnableLocalAdmin(string path)
+            private void Admin_Click(object sender, RoutedEventArgs e)
     {
-        if (!File.Exists(path)) { StatusText.Text = StatusMessages.PackageNotFound; return; }
-        try
-        {
-            if (_packageStore is not null) await _packageStore.DisposeAsync();
-            _packagePath = Path.GetFullPath(path);
-            _packageStore = new SqlitePackageStore(_packagePath);
-            _registry = new RegistryService(_packageStore);
-            FileSettings["SACRAMENTAL_RECORDS_PACKAGE"] = _packagePath;
-            SaveFileSettings();
-            ModeText.Text = Path.GetFileName(_packagePath);
-            StatusText.Text = StatusMessages.UsingPackage(Path.GetFileName(_packagePath));
-            _ = RefreshPeopleAsync();
-        }
-        catch (Exception ex) { StatusText.Text = ex.Message; }
+        var window = new AdministrationSettingsWindow { Owner = this };
+        window.ShowDialog();
     }
 
+        private async void EnableLocalAdmin(string path)
+    {
+        if (!File.Exists(path)) { StatusText.Text = StatusMessages.PackageNotFound; return; }
+
+        if (_packageStore is not null)
+        {
+            await _packageStore.DisposeAsync();
+            _packageStore = null;
+            _registry = null;
+        }
+
+        _packagePath = Path.GetFullPath(path);
+        while (true)
+        {
+            try
+            {
+                                _packageStore = new SqlitePackageStore(_packagePath);
+                _registry = new RegistryService(_packageStore);
+                SetReadWriteMode();
+                FileSettings["SACRAMENTAL_RECORDS_PACKAGE"] = _packagePath;
+                SaveFileSettings();
+                ModeText.Text = Path.GetFileName(_packagePath);
+                StatusText.Text = StatusMessages.UsingPackage(Path.GetFileName(_packagePath));
+                _ = RefreshPeopleAsync();
+                return;
+            }
+            catch (PackageLockedException ex)
+            {
+                                // MainWindow may still be loading the saved package from its constructor,
+                // before it has been shown. An unshown Window cannot be used as a WPF owner.
+                var lockDialog = new LockResolutionWindow(ex.LockPath);
+                if (IsVisible) lockDialog.Owner = this;
+                lockDialog.ShowDialog();
+
+                if (lockDialog.Choice == LockResolutionChoice.ReadOnly)
+                {
+                    try
+                    {
+                        _packageStore = new SqlitePackageStore(_packagePath, readOnly: true);
+                        _registry = new RegistryService(_packageStore);
+                        SetReadOnlyMode();
+                        ModeText.Text = $"{Path.GetFileName(_packagePath)} (read-only)";
+                        StatusText.Text = "Opened read-only because another session is using this package.";
+                        _ = RefreshPeopleAsync();
+                    }
+                    catch (Exception readOnlyException)
+                    {
+                        StatusText.Text = readOnlyException.Message;
+                    }
+                    return;
+                }
+
+                                if (lockDialog.Choice == LockResolutionChoice.Cancel)
+                {
+                    System.Windows.Application.Current.Shutdown();
+                    return;
+                }
+
+                if (!SqlitePackageStore.TryRemoveStaleLock(_packagePath))
+                {
+                    MessageBox.Show(
+                        this,
+                        "The lock is currently in use or cannot be removed. Close the other application session and try Open again.",
+                        "Package still in use",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    StatusText.Text = "The package is still locked.";
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = ex.Message;
+                return;
+            }
+        }
+    }
+
+        private void SetReadOnlyMode()
+        {
+            SaveButton.IsEnabled = false;
+            AddButton.IsEnabled = false;
+            EditButton.IsEnabled = true;
+            EditButton.Content = "View";
+        }
+
+        private void SetReadWriteMode()
+        {
+            SaveButton.IsEnabled = true;
+            AddButton.IsEnabled = true;
+            EditButton.IsEnabled = true;
+            EditButton.Content = "Edit";
+        }
+
     internal static void SaveFileSettings()
+
     {
         try
         {
@@ -184,7 +268,7 @@ public partial class MainWindow : Window
     {
         if (_registry is null) { StatusText.Text = StatusMessages.OpenPackageFirst; return; }
         if (PeopleGrid.SelectedItem is not Person person) { StatusText.Text = StatusMessages.SelectPersonFirst; return; }
-        var detail = new PersonDetailWindow(_registry, person.RecordId) { Owner = this };
+        var detail = new PersonDetailWindow(_registry, person.RecordId, _packageStore?.IsReadOnly == true) { Owner = this };
         detail.ShowDialog();
         _ = RefreshPeopleAsync();
     }

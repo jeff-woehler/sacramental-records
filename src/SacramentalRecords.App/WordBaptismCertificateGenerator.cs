@@ -10,7 +10,9 @@ namespace SacramentalRecords.App;
 /// </summary>
 internal static class WordBaptismCertificateGenerator
 {
-    private const string TemplateFileName = "assets\\template.docx";
+        private const string TemplateFileName = "assets\\template.docx";
+
+    internal static string BundledTemplatePath => Path.Combine(AppContext.BaseDirectory, TemplateFileName);
 
     public static void Write(
         string pdfFileName,
@@ -18,9 +20,17 @@ internal static class WordBaptismCertificateGenerator
         SacramentRecord baptism,
         IReadOnlyList<SacramentRecord> sacraments)
     {
-        var templateFileName = Path.Combine(AppContext.BaseDirectory, TemplateFileName);
+                var configuredTemplate = MainWindow.FileSettings.GetValueOrDefault(MainWindow.BaptismTemplateSettingKey);
+        var templateFileName = string.IsNullOrWhiteSpace(configuredTemplate)
+            ? BundledTemplatePath
+            : configuredTemplate;
         if (!File.Exists(templateFileName))
-            throw new FileNotFoundException("The baptism certificate Word template was not found.", templateFileName);
+        {
+            var message = string.IsNullOrWhiteSpace(configuredTemplate)
+                ? "The bundled baptism certificate Word template was not found."
+                : $"The selected baptism certificate template could not be found:\n{templateFileName}\n\nChoose a new template from the main window.";
+            throw new FileNotFoundException(message, templateFileName);
+        }
 
         var wordFileName = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.docx");
         File.Copy(templateFileName, wordFileName, overwrite: true);

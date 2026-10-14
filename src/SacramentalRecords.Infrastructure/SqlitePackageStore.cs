@@ -10,29 +10,50 @@ namespace SacramentalRecords.Infrastructure;
 /// Keeps the working SQLite file outside OneDrive. Only the completed ZIP package is synchronized.
 /// The lock is held for the lifetime of this store, so two application sessions cannot edit the package.
 /// </summary>
+public sealed class PackageLockedException : IOException
+{
+    public string LockPath { get; }
+
+    public PackageLockedException(string lockPath, IOException innerException)
+        : base($"The package is already open. Lock file: {lockPath}", innerException) => LockPath = lockPath;
+}
+
 public sealed class SqlitePackageStore : IRegistryStore, IAsyncDisposable
 {
     private const string DatabaseEntryName = "MemberRecords.sqlite";
     private readonly string _packagePath;
     private readonly string _workingDirectory;
     private readonly string _databasePath;
-    private readonly FileStream _lock;
+        private readonly FileStream? _lock;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private bool _disposed;
 
-    public bool HasUnpublishedChanges { get; private set; }
+        public bool HasUnpublishedChanges { get; private set; }
+    public bool IsReadOnly { get; }
 
-    public SqlitePackageStore(string packagePath)
+        public SqlitePackageStore(string packagePath, bool readOnly = false)
     {
+        IsReadOnly = readOnly;
         _packagePath = Path.GetFullPath(packagePath);
         var directory = Path.GetDirectoryName(_packagePath) ?? throw new ArgumentException("The package path has no directory.", nameof(packagePath));
         Directory.CreateDirectory(directory);
         if (!File.Exists(_packagePath)) throw new FileNotFoundException("The OneDrive database package was not found.", _packagePath);
 
-        try
-        {
-            _lock = new FileStream(_packagePath + ".lock", FileMode.CreateNew, FileAccess.Write, FileShare.None);
-            _workingDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SacramentalRecords", "sessions", Guid.NewGuid().ToString("N"));
+                        try
+                        {
+                            if (!IsReadOnly)
+                            {
+                                try
+                                {
+                                    _lock = new FileStream(_packagePath + ".lock", FileMode.CreateNew, FileAccess.Write, FileShare.None);
+                                }
+                                catch (IOException ex)
+                                {
+                                    throw new PackageLockedException(_packagePath + ".lock", ex);
+                                }
+                            }
+
+                            _workingDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SacramentalRecords", "sessions", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_workingDirectory);
             _databasePath = Path.Combine(_workingDirectory, DatabaseEntryName);
             ExtractPackage();
@@ -41,6 +62,7 @@ public sealed class SqlitePackageStore : IRegistryStore, IAsyncDisposable
         catch
         {
             try { _lock?.Dispose(); } catch { }
+            // Do not remove a lock that this instance failed to acquire.
             try { if (_lock is not null) File.Delete(_packagePath + ".lock"); } catch { }
             throw;
         }
@@ -134,6 +156,25 @@ public sealed class SqlitePackageStore : IRegistryStore, IAsyncDisposable
         finally { _gate.Release(); }
     }
 
+        /// <summary>
+    /// Removes a lock only when no process currently has it open. This makes it safe
+    /// for a user to recover from a crash without deleting an active session's lock.
+    /// </summary>
+    public static bool TryRemoveStaleLock(string packagePath)
+    {
+        var lockPath = Path.GetFullPath(packagePath) + ".lock";
+        if (!File.Exists(lockPath)) return true;
+
+        try
+        {
+            using (new FileStream(lockPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) { }
+            File.Delete(lockPath);
+            return true;
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
+    }
+
     public async Task PublishPackageAsync(CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken);
@@ -150,7 +191,14 @@ public sealed class SqlitePackageStore : IRegistryStore, IAsyncDisposable
         if (_disposed) return; _disposed = true;
         await _gate.WaitAsync();
         try { }
-        finally { _gate.Release(); _lock.Dispose(); try { File.Delete(_packagePath + ".lock"); } catch { } try { Directory.Delete(_workingDirectory, true); } catch { } _gate.Dispose(); }
+        finally
+        {
+            _gate.Release();
+            _lock?.Dispose();
+            if (_lock is not null) try { File.Delete(_packagePath + ".lock"); } catch { }
+            try { Directory.Delete(_workingDirectory, true); } catch { }
+            _gate.Dispose();
+        }
     }
 
     private void ExtractPackage()

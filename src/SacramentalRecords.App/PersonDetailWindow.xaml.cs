@@ -1,8 +1,10 @@
 using System.Globalization;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using Microsoft.Win32;
 using System.Windows.Input;
+using System.Windows.Media;
 using SacramentalRecords.Application;
 using SacramentalRecords.Domain;
 using SacramentalRecords.App.Resources;
@@ -14,11 +16,13 @@ public partial class PersonDetailWindow : Window
     private readonly RegistryService _registry;
     private Person? _person;
     private SacramentRecord? _baptism;
-    private IReadOnlyList<SacramentRecord> _sacraments = [];
+        private IReadOnlyList<SacramentRecord> _sacraments = [];
+    private readonly bool _readOnly;
 
-    public PersonDetailWindow(RegistryService registry, Guid recordId)
+    public PersonDetailWindow(RegistryService registry, Guid recordId, bool readOnly = false)
     {
         InitializeComponent();
+        _readOnly = readOnly;
         WindowControlHelper.RemoveMinimizeButton(this);
         _registry = registry;
         Loaded += async (_, _) => await LoadAsync(recordId);
@@ -48,7 +52,9 @@ public partial class PersonDetailWindow : Window
                 .OrderBy(record => EntryTypeCatalog.SortOrder(record.SacramentType))
                 .ThenByDescending(record => record.SacramentDate.HasValue)
                 .ThenByDescending(record => record.SacramentDate);
-            StatusBarText.Text = StatusMessages.PersonRecordSummary(person.RecordId, records.Count);
+                        StatusBarText.Text = StatusMessages.PersonRecordSummary(person.RecordId, records.Count);
+            if (_readOnly)
+                _ = Dispatcher.BeginInvoke(DisableEditingButtons);
         }
         catch (Exception ex) { StatusBarText.Text = ex.Message; }
     }
@@ -93,16 +99,16 @@ public partial class PersonDetailWindow : Window
         }
     }
 
-    private async void Edit_Click(object sender, RoutedEventArgs e)
+        private async void Edit_Click(object sender, RoutedEventArgs e)
     {
-        if (_person is null) return;
+        if (_readOnly || _person is null) return;
         var editor = new PersonEditorWindow(_registry, _person) { Owner = this };
         if (editor.ShowDialog() == true) await LoadAsync(_person.RecordId);
     }
 
-    private async void AddSacrament_Click(object sender, RoutedEventArgs e)
+        private async void AddSacrament_Click(object sender, RoutedEventArgs e)
     {
-        if (_person is null) return;
+        if (_readOnly || _person is null) return;
         var editor = new SacramentEditorWindow(_registry, _person.RecordId) { Owner = this };
         if (editor.ShowDialog() == true) await LoadAsync(_person.RecordId);
     }
@@ -139,23 +145,40 @@ public partial class PersonDetailWindow : Window
         }
     }
 
+        private void DisableEditingButtons()
+    {
+        foreach (var button in Descendants<Button>(this))
+            button.IsEnabled = button == CertificateButton;
+    }
+
+    private static IEnumerable<T> Descendants<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index);
+            if (child is T match) yield return match;
+            foreach (var descendant in Descendants<T>(child)) yield return descendant;
+        }
+    }
+
     private static string MakeSafeFileName(string value)
     {
         var invalid = Path.GetInvalidFileNameChars();
         return string.Concat(value.Select(character => invalid.Contains(character) ? '_' : character));
     }
 
-    private async void EditSacrament_Click(object sender, RoutedEventArgs e)
+        private async void EditSacrament_Click(object sender, RoutedEventArgs e)
     {
-        if (_person is null) return;
+        if (_readOnly || _person is null) return;
         var record = (sender as FrameworkElement)?.DataContext as SacramentRecord ?? SacramentsGrid.SelectedItem as SacramentRecord;
         if (record is null) return;
         var editor = new SacramentEditorWindow(_registry, _person.RecordId, record) { Owner = this };
         if (editor.ShowDialog() == true) await LoadAsync(_person.RecordId);
     }
 
-    private async void DeleteSacrament_Click(object sender, RoutedEventArgs e)
+        private async void DeleteSacrament_Click(object sender, RoutedEventArgs e)
     {
+        if (_readOnly) return;
         var record = (sender as FrameworkElement)?.DataContext as SacramentRecord ?? SacramentsGrid.SelectedItem as SacramentRecord;
         if (record is null) return;
         var type = EntryTypeCatalog.Display(record.SacramentType);
@@ -172,8 +195,9 @@ public partial class PersonDetailWindow : Window
 
     private static bool IsSacramentType(string? value) => EntryTypeCatalog.Canonicalize(value) is "baptism" or "first_communion" or "confirmation" or "marriage" or "holy_orders";
 
-    private async void Delete_Click(object sender, RoutedEventArgs e)
+        private async void Delete_Click(object sender, RoutedEventArgs e)
     {
+        if (_readOnly) return;
         if (_person is null || MessageBox.Show(this, "Delete this person and all entries? This cannot be undone.", "Confirm deletion", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         try { await _registry.DeletePersonAsync(_person.RecordId); DialogResult = true; }
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Unable to delete person", MessageBoxButton.OK, MessageBoxImage.Error); }

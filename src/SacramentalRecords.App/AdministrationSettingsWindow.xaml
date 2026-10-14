@@ -1,0 +1,49 @@
+<Window x:Class="SacramentalRecords.App.AdministrationSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Administration Settings" Width="700" Height="500" MinWidth="560" MinHeight="360"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+  <Grid Margin="28">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0" Margin="0,0,0,18">
+      <TextBlock Text="ADMINISTRATION" Foreground="{StaticResource AccentBrush}" FontSize="13" FontWeight="Bold" />
+      <TextBlock Text="Settings" Style="{StaticResource DisplayText}" FontSize="32" FontWeight="Bold" Margin="0,4,0,0" />
+    </StackPanel>
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <GroupBox Header="Certificate Template">
+        <Grid Margin="4,8,4,4">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+          <TextBlock Text="Choose the Word template used when generating baptism certificates." TextWrapping="Wrap" Margin="0,0,0,10" />
+          <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Grid>
+              <TextBox x:Name="TemplatePathText" IsReadOnly="True" Padding="12,8,38,8" VerticalContentAlignment="Center" ToolTip="The template currently used for certificates" />
+              <Button Content="X" Width="28" Height="28" Padding="0" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0"
+                      Background="#E2E2E2" Foreground="#666666" BorderBrush="#B8B8B8" FontSize="12" FontWeight="Bold"
+                      Click="ClearTemplate_Click" ToolTip="Use the built-in certificate template" />
+            </Grid>
+            <Button Grid.Column="1" Content="Download" Width="105" Margin="10,0,0,0" Click="Download_Click" />
+            <Button Grid.Column="2" Content="Use" Width="90" Margin="10,0,0,0" Style="{StaticResource SecondaryButton}" Click="UseTemplate_Click" />
+            <Button x:Name="OpenTemplateButton" Grid.Column="3" Content="Open" Width="90" Margin="10,0,0,0" Style="{StaticResource SecondaryButton}" Click="OpenTemplate_Click" ToolTip="Open the selected template in Microsoft Word" />
+          </Grid>
+        </Grid>
+    </GroupBox>
+    </ScrollViewer>
+
+    <Button Grid.Row="2" Content="OK" Width="100" HorizontalAlignment="Right" Margin="0,18,0,0" Click="Ok_Click" />
+  </Grid>
+</Window>

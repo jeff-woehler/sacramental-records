@@ -5,7 +5,7 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Windows;
+
 
 namespace SacramentalRecords.App;
 
@@ -54,21 +54,28 @@ internal static class AppUpdater
             || available <= current)
             return false;
 
-        var notes = string.IsNullOrWhiteSpace(manifest.Notes) ? "" : $"\n\nWhat's new:\n{manifest.Notes}";
-        var answer = MessageBox.Show(
-            $"A new version of Sacramental Records is available.\n\nInstalled: v{App.Version}\nAvailable: v{available.ToString(3)}{notes}\n\nUpdate now? The app will close and restart automatically.",
-            "Update available", MessageBoxButton.YesNo, MessageBoxImage.Information);
-        if (answer != MessageBoxResult.Yes) return false;
+                var notes = string.IsNullOrWhiteSpace(manifest.Notes) ? "" : $"\n\nWhat's new:\n{manifest.Notes}";
+        var prompt = new UpdatePromptWindow(
+            "Update available",
+            "A new version is available",
+            $"Installed: v{App.Version}\nAvailable: v{available.ToString(3)}{notes}\n\nUpdate now? The app will close and restart automatically.",
+            confirmation: true);
+        prompt.ShowDialog();
+        if (!prompt.Accepted) return false;
 
         try
         {
             await StartUpdateAsync(manifestUri, manifest);
             return true;
         }
-        catch (Exception ex)
+                catch (Exception ex)
         {
-            MessageBox.Show($"The update could not be installed. The current version will continue to run.\n\n{ex.Message}",
-                "Update failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        var failurePrompt = new UpdatePromptWindow(
+                "Update failed",
+                "The update could not be installed",
+                $"The current version will continue to run.\n\n{ex.Message}",
+                confirmation: false);
+                        failurePrompt.ShowDialog();
             return false;
         }
     }
