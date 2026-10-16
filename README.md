@@ -1,107 +1,58 @@
 # Sacramental Records
 
-Sacramental Records is a Windows desktop application for maintaining parish people, sacramental records, and related register entries. It is designed for a parish office that needs a focused, local-first registry application with a dependable file-based data store, Word-assisted certificate generation, and no server or hosted service requirement.
+Sacramental Records is a Windows desktop app for parish offices. It gives staff one focused place to find parishioners, maintain sacramental and register entries, and produce baptismal certificates without requiring a server or hosted service.
 
-## Architecture at a glance
+The app is designed for local-first use: the parish data file can live in a controlled shared folder, while each work session uses a protected local copy. This keeps everyday work responsive and helps prevent two people from editing the same file at once.
 
-```text
-WPF desktop client
-  -> Application services and validation
-  -> Repository interface
-  -> Local SQLite session database
-  -> Verified SQLite package in a shared file store
-```
+## Latest release: 1.1.16
 
-The application runs on Windows and uses a packaged SQLite database as its portable data format. A selected `MemberRecords.srdb` file is the shared store; the live SQLite database is extracted to the user's local application-data directory and is never opened directly from the shared location. A sibling `.lock` file is held for the lifetime of the session so that only one application session edits a package at a time. Users should not manually edit a package or open two sessions against the same package.
+The current release is **1.1.16**. It adds **Religious Profession** and **Diaconate** register entry types, improves file management and error handling, and changes the data-package extension to `.srdb`.
 
-## What the application does
+See the [full release history](docs/release-history.md) or the [latest release manifest](releases/latest.json) for the package name, checksum, and release notes.
 
-- Searches people by name and parish/member identifiers.
-- Creates, edits, and deletes people and their sacramental records and related entries.
-- Validates required identity and entry fields through the application layer.
-- Tracks edits and deletes in the SQLite `AuditEvents` table.
-- Detects stale-record saves with `UpdatedUtc` checks.
-- Produces baptismal certificate PDFs from the included Word template when Microsoft Word is installed.
-- Supports keyboard-driven search, navigation, and editing in the WPF desktop UI.
+## Everyday use
 
-## SQLite package workflow
+1. Open the app and choose **Open** to select the parish `MemberRecords.srdb` file.
+2. Search for a person by given or family name.
+3. Open the person record to review details and register entries.
+4. Choose **Add**, **Change**, or **Add register entry** to maintain the record.
+5. Choose **Certificate** to create a baptismal certificate when Microsoft Word is installed.
+6. Choose **Save** on the main window to publish your changes to the shared package.
+7. Publish before closing if you have made changes since the last publish.
 
-`SqlitePackageStore` uses `Microsoft.Data.Sqlite` and transactions for reads and writes. On startup it verifies that the selected package exists, acquires `MemberRecords.srdb.lock`, extracts `MemberRecords.sqlite` into a unique local session directory, and initializes the schema and indexes. The package contains only the SQLite database entry, so journals, WAL files, and temporary database files remain local to the session.
+Use the [user guide](docs/user-guide.md) for the complete daily workflow and keyboard shortcuts.
 
-Edits are saved immediately to the local SQLite session. **Publish package** creates a temporary ZIP in the same directory as the selected package, verifies that it contains the database entry, makes a timestamped backup of the previous package, and replaces the package. The session lock remains held after publishing so work can continue. Closing the application releases the local session and lock; if changes have not been published, the user is warned and can publish, discard the local session, or continue working. If publishing fails, the local changes remain available for another attempt.
+## Important handling rules
 
-The package path and update-manifest location are stored in `SacramentalRecords.settings.json` beside the application executable. The package setting has this form:
+- Only one application session should edit a parish package at a time.
+- Do not open, edit, or replace the `.srdb` file manually while the app is using it.
+- Keep the package in a restricted, backed-up location.
+- The app creates backups when publishing; retain them according to parish records policy.
+- The release download contains the program, not parish data.
 
-On the first launch after this extension change, if the setting still points to a `.dbpackage` file, the application safely renames it to the matching `.srdb` name, updates the setting, and then opens the renamed file. It does not overwrite an existing `.srdb` file, and it waits until a legacy package is not in use before renaming it. Staff therefore do not need to rename the shared file manually.
+Administrators can read [data management and recovery guidance](docs/administration.md). For moving historical spreadsheets into the app, see the [legacy import guide](docs/import-guide.md).
 
-```json
-{
-  "SACRAMENTAL_RECORDS_PACKAGE": "C:\\Records\\MemberRecords.srdb"
-}
-```
+## Documentation
 
-Access is controlled through the Windows account and permissions on the package file. Keep the package in a controlled location, restrict write access, and retain the generated backups. Do not allow multiple independent writers to edit or replace the same package while a session is active.
+- [User guide](docs/user-guide.md) — installation, searching, editing, certificates, publishing, and shortcuts.
+- [Administration](docs/administration.md) — permissions, package management, backups, updates, and recovery.
+- [Import guide](docs/import-guide.md) — dry-run and commit procedures for legacy workbooks and wedding CSV files.
+- [Technical reference](docs/technical-reference.md) — architecture, storage, concurrency, and release details.
+- [Release history](docs/release-history.md) — historical change notes.
 
 
 
-## Projects
 
-- `src/SacramentalRecords.App` — WPF UI, startup, navigation, dialogs, settings, updates, and certificate generation.
-- `src/SacramentalRecords.Domain` — immutable `Person`, `SacramentRecord`, and `AuditEvent` records.
-- `src/SacramentalRecords.Application` — repository abstraction, use cases, validation, search, and record-conflict handling.
-- `src/SacramentalRecords.Infrastructure` — SQLite package persistence plus an optional local workbook adapter.
-- `src/LegacySacramentImport` — command-line utility that converts source sacramental workbooks into a SQLite database with a dry-run report and validation warnings.
 
-## SQLite package contract
+## Development
 
-A package must contain a `MemberRecords.sqlite` database entry and is intended to contain no other entries. Its relational schema contains `People`, `Sacraments`, and `AuditEvents`; the column names below are the supported data contract.
-
-### Column format
-
-SQLite stores dates and timestamps as ISO-8601 text. Optional fields may be blank. Every `RecordId`, `PersonRecordId`, and `EventId` value must be a valid GUID generated by the application or an import utility.
-
-| Table | Columns, in the supported schema |
-| --- | --- |
-| `People` | `RecordId`, `GivenName`, `MiddleName`, `FamilyName`, `BirthDate`, `ChurchDbId`, `BirthCity`, `BaptismDate`, `BaptismChurch`, `Status`, `PdsMemberId`, `FlocknoteId`, `UpdatedUtc` |
-| `Sacraments` | `RecordId`, `PersonRecordId`, `SacramentType`, `SacramentDate`, `Name`, `Place`, `Minister`, `FatherName`, `MotherName`, `SponsorOne`, `SponsorTwo`, `SponsorTwoIsChristianWitness`, `ProxyOne`, `ProxyTwo`, `Volume`, `Page`, `Item`, `Details`, `CanonicalNotations`, `UpdatedUtc` |
-| `AuditEvents` | `EventId`, `RecordId`, `User`, `Operation`, `OccurredUtc`, `Summary` |
-
-Record identifiers must never be inferred from row positions: rows can be sorted, inserted, or moved without changing the identity of a record.
-
-Baptism details normally belong in a baptism sacrament record. The person-level `BaptismDate` and `BaptismChurch` fields are reserved for people baptized elsewhere whose details must be transmitted to their home parish; store the church name and city together in `BaptismChurch`. When a baptism sacrament exists, the person detail view treats the sacrament's date as authoritative. The import utility also clears redundant person-level baptism fields when a baptism record is present.
-
-The domain model additionally supports `SponsorTwoIsChristianWitness`, `ProxyOne`, and `ProxyTwo`. The SQLite store adds these columns to older databases when a session initializes; new packages should include them. Dates use `YYYY-MM-DD`, and timestamps use round-trip ISO-8601 text such as `YYYY-MM-DDTHH:mm:ss.fffffff+00:00`.
-
-## Concurrency, backups, and failure behavior
-
-- A package lock prevents two application sessions from editing the same package at once.
-- A per-session semaphore serializes operations within the application process.
-- Saves compare the record's current `UpdatedUtc` with the value loaded by the editor and refuse stale writes.
-- Package publishing is atomic from the application's perspective: it writes and verifies a temporary archive before replacement.
-- The previous package is retained as a timestamped `.bak` file; the store keeps a small rolling set of recent backups.
-- Closing does not silently publish. Publish failures leave the local session intact so the user can retry.
-- The application surfaces file, package, validation, and conflict errors instead of queuing unsent writes.
-
-These safeguards coordinate application sessions that use the package protocol. They cannot protect against a person independently replacing or editing the package outside the application.
-
-## Certificate generation
-
-Baptismal certificates are generated as PDFs from `src/SacramentalRecords.App/assets/template.docx`. Microsoft Word is used on Windows for template field evaluation and PDF rendering; the template remains separate from the record-storage code. Certificate generation is therefore an application concern and does not alter the SQLite package.
-
-## Local development
-
-Install the .NET 8 SDK. The solution file is at the repository root and the source projects are under `src`.
-
-From the repository root:
+Install the .NET 8 SDK. The solution is at the repository root and source projects are under `src`.
 
 ```powershell
 dotnet build .\SacramentalRecords.sln
 ```
 
-The WPF application and certificate generator require Windows. The Domain, Application, Infrastructure, and import projects target cross-platform .NET where their dependencies permit; the application itself should be run and tested on Windows. To build only the desktop application:
+The WPF application and certificate generator require Windows. The domain, application, infrastructure, and import projects can be built where their dependencies permit. See the [technical reference](docs/technical-reference.md) for the project layout and release process.
 
-```powershell
-dotnet build .\src\SacramentalRecords.App\SacramentalRecords.App.csproj
-```
 
 
