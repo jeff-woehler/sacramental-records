@@ -21,7 +21,7 @@ public sealed class LocalWorkbookStore(LocalWorkbookOptions options) : IRegistry
             return Rows(sheet, headers)
                 .Select(row => ToPerson(row, headers))
                 .Where(person => string.IsNullOrWhiteSpace(search) ||
-                    ($"{person.GivenName} {person.MiddleName} {person.FamilyName} {person.PdsMemberId} {person.FlocknoteId}")
+                    ($"{person.GivenName} {person.MiddleName} {person.FamilyName} {person.MaidenName} {person.PdsMemberId} {person.FlocknoteId}")
                     .Contains(search, StringComparison.OrdinalIgnoreCase))
                 .ToList();
         }

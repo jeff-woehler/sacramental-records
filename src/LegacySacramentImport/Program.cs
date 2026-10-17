@@ -125,7 +125,8 @@ internal static partial class Program
 
 
 
-    private static readonly List<string> Report = ["Sheet,Row,Type,Severity,Action,PersonId,Field,Message"];
+    private const string ReportHeader = "Source,Sheet,Row,Type,Severity,Action,PersonId,Field,Message";
+    private static readonly List<string> Report = [];
     private static readonly Dictionary<string, string> ParishSpellings = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, string> LooseParishSpellings = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, string> AmbiguousParishOutputs = new(StringComparer.Ordinal);
@@ -147,11 +148,13 @@ internal static partial class Program
             if (options.Commit) Backup(options.Database);
             if (IsPdsExport(options.Input)) return RunPds(options);
 
-                        var rows = Path.GetExtension(options.Input).Equals(".csv", StringComparison.OrdinalIgnoreCase)
+            var isCsv = Path.GetExtension(options.Input).Equals(".csv", StringComparison.OrdinalIgnoreCase);
+            var rows = isCsv
                 ? ReadWeddingCsv(options.Input)
                 : ReadWorkbook(new XLWorkbook(options.Input));
 
             if (rows.Count == 0) throw new InvalidOperationException("No sacramental worksheets were found.");
+            BuildNameStatistics(rows);
 
             using var connection = new SqliteConnection($"Data Source={Path.GetFullPath(options.Database)}");
             connection.Open();
@@ -186,11 +189,15 @@ internal static partial class Program
                         Warn(row, "placeholder-name", Value(row, IdColumns), "FirstName/Surname",
                             $"the register records no name ('{given} {family}'); kept verbatim and needs review");
 
+                    (given, family, var maiden) = GuessMaidenName(row, given, family);
                     var (firstName, middleName) = SplitName(given);
                     var churchId = Value(row, IdColumns);
                     var birth = DateField(row, BirthColumns, "BirthDate");
                                         var baptism = DateField(row, PersonBaptDateColumns, "BaptDate");
                                         var person = Resolve(row, people, byChurchId, byNameKey, byNameBaptism, byBirthBaptismFamily, churchId, given, family, birth, baptism);
+                    // A bride's baptism is registered under her maiden name.
+                    if (person is null && churchId is null && maiden is not null)
+                        person = Resolve(row, people, byChurchId, byNameKey, byNameBaptism, byBirthBaptismFamily, churchId, given, maiden, birth, baptism);
 
 
                     var isNew = person is null;
@@ -199,14 +206,18 @@ internal static partial class Program
                                                 person = new KnownPerson(NewPersonId(churchId, given, family, birth, baptism, row), churchId, firstName, middleName, family, birth, baptism, null, null);
 
 
-                        InsertPerson(connection, transaction, person, row);
+                        InsertPerson(connection, transaction, person, row, maiden);
                         people[person.Id] = person;
                                                 Index(person, byChurchId, byNameKey, byNameBaptism, byBirthBaptismFamily);
 
 
                         created++;
                     }
-                    else matched++;
+                    else
+                    {
+                        matched++;
+                        if (maiden is not null) FillMaidenName(connection, transaction, person.Id, maiden);
+                    }
 
                                         if (!seenSacraments.Add((person.Id, row.Map.Type)))
                         Warn(row, "duplicate", churchId, row.Map.Type,
@@ -252,7 +263,7 @@ internal static partial class Program
             }
             else transaction.Rollback();
 
-            File.WriteAllLines(options.Report, Report, new UTF8Encoding(true));
+            WriteReport(options.Report, isCsv ? "weddings" : "legacy-sacraments");
             Console.WriteLine($"""
                 Rows read: {rows.Count}
                 People created: {created}; people matched: {matched}
@@ -996,7 +1007,7 @@ internal static partial class Program
             Warn(row, "suspicious-date-order", person.ChurchId, "BirthDate/WedDate", $"birth date {birth:yyyy-MM-dd} is after wedding date {wedding:yyyy-MM-dd}");
     }
 
-    private static void InsertPerson(SqliteConnection connection, SqliteTransaction transaction, KnownPerson person, SourceRow row)
+    private static void InsertPerson(SqliteConnection connection, SqliteTransaction transaction, KnownPerson person, SourceRow row, string? maiden)
     {
         // A baptism row supplies the baptism sacrament record instead, which is the system of record
         // for baptism details; leaving the person-level copy populated would duplicate (and diverge from) it.
@@ -1006,8 +1017,9 @@ internal static partial class Program
         command.Transaction = transaction;
         command.CommandText =
             "INSERT INTO People(RecordId,GivenName,MiddleName,FamilyName,BirthDate,ChurchDbId,BirthCity," +
-            "BaptismDate,BaptismChurch,Status,PdsMemberId,FlocknoteId,UpdatedUtc) " +
-            "VALUES($id,$given,$middle,$family,$birth,$churchId,$city,$baptismDate,$baptismChurch,'historical',NULL,NULL,$updated)";
+            "BaptismDate,BaptismChurch,Status,PdsMemberId,FlocknoteId,UpdatedUtc,MaidenName) " +
+            "VALUES($id,$given,$middle,$family,$birth,$churchId,$city,$baptismDate,$baptismChurch,'historical',NULL,NULL,$updated,$maiden)";
+        Bind(command, "$maiden", maiden);
         Bind(command, "$id", person.Id.ToString());
         Bind(command, "$given", person.Given);
         Bind(command, "$middle", person.Middle);
@@ -1195,7 +1207,22 @@ internal static partial class Program
             }
         }
         if (input is null || database is null) throw new InvalidOperationException(usage);
-        return new Options(input, database, commit, report ?? "legacy-sacrament-import.csv", lookup);
+        return new Options(input, database, commit, report ?? "import-audit.csv", lookup);
+    }
+
+    /// <summary>Replaces this source's rows in the shared report and keeps the rows from the other sources.</summary>
+    private static void WriteReport(string path, string source)
+    {
+        var prefix = Csv(source) + ",";
+        var kept = new List<string>();
+        if (File.Exists(path))
+        {
+            var existing = File.ReadAllLines(path);
+            if (existing.Length > 0 && existing[0].Replace("\"", string.Empty) != ReportHeader)
+                throw new InvalidOperationException($"'{path}' is not an import report (unexpected header); choose another --report file.");
+            kept.AddRange(existing.Skip(1).Where(line => !line.StartsWith(prefix, StringComparison.Ordinal)));
+        }
+        File.WriteAllLines(path, kept.Prepend(ReportHeader).Concat(Report.Select(line => prefix + line)), new UTF8Encoding(true));
     }
 
     private static string Next(string[] args, ref int index)

@@ -23,11 +23,11 @@ From the importer output folder or project directory:
 .\LegacySacramentImport.exe --input .\legacy-sacraments.xlsm --database .\MemberRecords.sqlite --lookup .\Lookup.xlsx --commit --report .\import-report.csv
 ```
 
-The same `--input` option accepts a wedding `.csv`. Run `--help` for the complete usage line. A zero exit code means the run completed without errors; exit code `2` indicates validation errors and a rolled-back commit or dry-run findings. Exit code `1` indicates a command or file error.
+The same `--input` option accepts a wedding `.csv` or a PDS export `.csv` (detected from its header row). Run `--help` for the complete usage line. A zero exit code means the run completed without errors; exit code `2` indicates validation errors and a rolled-back commit or dry-run findings. Exit code `1` indicates a command or file error.
 
 ## Review the report
 
-The report is CSV and includes source sheet/row, entry type, severity, action, person identifier, field, and message. Resolve errors before committing. Pay particular attention to duplicate-person warnings, ambiguous identity matches, unparsed dates, missing required columns, and unmapped parish spellings.
+All imports share one report file (default `import-audit.csv`). The first column, `Source`, is `legacy-sacraments`, `weddings`, or `pds`; each run replaces only the rows for its own source and keeps the others. The remaining columns are source sheet/row, entry type, severity, action, person identifier, field, and message. Resolve errors before committing. Pay particular attention to duplicate-person warnings, ambiguous identity matches, unparsed dates, missing required columns, and unmapped parish spellings.
 
 The importer matches by legacy person ID when available, then uses conservative name/date rules. It never merges possible duplicates automatically. Baptism entries are authoritative for baptism details; redundant person-level baptism fields are cleared when a baptism entry is present. The import also records an audit event when committed.
 

@@ -316,6 +316,11 @@ public partial class MainWindow : Window
             SearchBox.Clear();
             e.Handled = true;
         }
+        else if (e.Key == Key.Enter && SearchBox.IsKeyboardFocusWithin)
+        {
+            Search_Click(sender, new RoutedEventArgs());
+            e.Handled = true;
+        }
     }
 
     private void PeopleGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e) => OpenSelectedPerson();

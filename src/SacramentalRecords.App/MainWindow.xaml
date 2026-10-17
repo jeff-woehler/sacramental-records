@@ -44,7 +44,7 @@
           <ColumnDefinition Width="Auto" />
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
-        <TextBox x:Name="SearchBox" Grid.Column="0" Height="46" FontSize="15" VerticalContentAlignment="Center" ToolTip="Search by family or given name (Ctrl+F)" />
+        <TextBox x:Name="SearchBox" Grid.Column="0" Height="46" FontSize="15" VerticalContentAlignment="Center" ToolTip="Search by family, given, or maiden name (Ctrl+F; Enter to search)" />
         <Button Grid.Column="1" Content="Search" Width="100" Margin="10,0,0,0" Click="Search_Click" ToolTip="Search (Enter)" />
                 <Button x:Name="AddButton" Grid.Column="2" Content="Add" Width="100" Margin="10,0,0,0" Style="{StaticResource SecondaryButton}" Click="AddPerson_Click" ToolTip="Add person (Ctrl+N)" />
         <Button x:Name="EditButton" Grid.Column="3" Content="Edit" Width="100" Margin="10,0,0,0" Style="{StaticResource SecondaryButton}" Click="OpenPerson_Click" ToolTip="Open selected person (Enter or double-click)" />

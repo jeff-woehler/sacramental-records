@@ -174,7 +174,7 @@ internal static partial class Program
         }
         else transaction.Rollback();
 
-        File.WriteAllLines(options.Report, Report, new UTF8Encoding(true));
+        WriteReport(options.Report, "pds");
         Console.WriteLine($"""
             PDS rows read: {records.Count - 1}; people processed: {pdsPeople.Count}
             People matched: {string.Join(", ", tiers.OrderByDescending(t => t.Value).Select(t => $"{t.Key} {t.Value}"))}

@@ -87,7 +87,7 @@ public sealed class SqlitePackageStore : IRegistryStore, IAsyncDisposable
         {
             await using var connection = Open();
             await using var command = connection.CreateCommand();
-            command.CommandText = "SELECT * FROM People WHERE @search = '' OR (GivenName || ' ' || COALESCE(MiddleName,'') || ' ' || FamilyName || ' ' || COALESCE(PdsMemberId,'') || ' ' || COALESCE(FlocknoteId,'')) LIKE @pattern COLLATE NOCASE ORDER BY FamilyName, GivenName";
+            command.CommandText = "SELECT * FROM People WHERE @search = '' OR (GivenName || ' ' || COALESCE(MiddleName,'') || ' ' || FamilyName || ' ' || COALESCE(MaidenName,'') || ' ' || COALESCE(PdsMemberId,'') || ' ' || COALESCE(FlocknoteId,'')) LIKE @pattern COLLATE NOCASE ORDER BY FamilyName, GivenName";
             command.Parameters.AddWithValue("@search", search.Trim());
             command.Parameters.AddWithValue("@pattern", $"%{search.Trim()}%");
             var result = new List<Person>();
