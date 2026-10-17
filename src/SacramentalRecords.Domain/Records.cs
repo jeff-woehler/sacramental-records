@@ -13,7 +13,9 @@ public sealed record Person(
     string Status,
     string? PdsMemberId,
     string? FlocknoteId,
-    DateTimeOffset UpdatedUtc);
+    DateTimeOffset UpdatedUtc,
+    string? MaidenName = null,
+    DateOnly? DeceasedDate = null);
 
 public sealed record SacramentRecord(
     Guid RecordId,

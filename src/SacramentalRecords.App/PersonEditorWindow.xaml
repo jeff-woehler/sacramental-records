@@ -7,7 +7,7 @@
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
     <Grid Grid.Row="0" Margin="0,0,0,22">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -39,20 +39,25 @@
       <TextBlock Text="Birth city" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,12,0"/><TextBox x:Name="BirthCityBox" Grid.Column="1" Margin="4"/>
       <TextBlock Grid.Column="3" Text="Status" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,12,0"/><ComboBox x:Name="StatusBox" Grid.Column="4" Margin="4" SelectedValuePath="Tag"><ComboBoxItem Content="Historical" Tag="historical"/><ComboBoxItem Content="Active member" Tag="active_member"/><ComboBoxItem Content="Non-member" Tag="non_member"/></ComboBox>
     </Grid>
-    <Border Grid.Row="4" Background="{StaticResource SurfaceMutedBrush}" Padding="12" Margin="0,4,0,0">
+    <Grid Grid.Row="4" Margin="0,0,0,12">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/><ColumnDefinition Width="24"/><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <TextBlock Text="Maiden name" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,12,0"/><TextBox x:Name="MaidenNameBox" Grid.Column="1" Margin="4"/>
+      <TextBlock Grid.Column="3" Text="Deceased date" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,12,0"/><DatePicker x:Name="DeceasedDatePicker" Grid.Column="4" Margin="4"/>
+    </Grid>
+    <Border Grid.Row="5" Background="{StaticResource SurfaceMutedBrush}" Padding="12" Margin="0,4,0,0">
       <StackPanel>
         <CheckBox x:Name="CreateBaptismBox" Content="Create a baptism sacrament record after saving" FontWeight="SemiBold" IsChecked="True"/>
         <TextBlock Text="Baptism details can be entered below when needed." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="24,5,0,0"/>
       </StackPanel>
     </Border>
-    <GroupBox Grid.Row="5" Header="Baptism details" Margin="0,12,0,0" Padding="8,4">
+    <GroupBox Grid.Row="6" Header="Baptism details" Margin="0,12,0,0" Padding="8,4">
       <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/><ColumnDefinition Width="24"/><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
         <TextBlock Text="Baptism date" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,12,0"/><DatePicker x:Name="BaptismDatePicker" Grid.Column="1" Margin="4"/>
         <TextBlock Grid.Column="3" Text="Performed at" TextWrapping="Wrap" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,12,0"/><TextBox x:Name="BaptismChurchBox" Grid.Column="4" Margin="4"/>
       </Grid>
     </GroupBox>
-    <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+    <StackPanel Grid.Row="7" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
       <Button Content="Cancel" IsCancel="True" Width="100" Margin="0,0,10,0" Style="{StaticResource SecondaryButton}" ToolTip="Cancel (Esc)"/>
       <Button Content="Save record" IsDefault="True" Width="120" Click="Save_Click" ToolTip="Save record (Enter or Ctrl+S)"/>
     </StackPanel>

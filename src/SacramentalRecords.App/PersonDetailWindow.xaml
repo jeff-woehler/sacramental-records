@@ -42,6 +42,9 @@
     <GroupBox Grid.Row="1" Margin="0,0,0,4" Header="Person and baptism details">
       <Grid Margin="4,2">
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,8,12,0"><TextBlock Text="MAIDEN NAME" Style="{StaticResource CardLabel}"/><TextBlock x:Name="MaidenNameText" FontSize="15" TextWrapping="Wrap"/></StackPanel>
+        <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,8,12,0"><TextBlock Text="DECEASED" Style="{StaticResource CardLabel}"/><TextBlock x:Name="DeceasedText" FontSize="15" TextWrapping="Wrap"/></StackPanel>
         <StackPanel Grid.Column="0" Margin="0,0,12,0"><TextBlock Text="BIRTH DATE" Foreground="{StaticResource MutedBrush}" FontSize="12" FontWeight="Bold"/><TextBlock x:Name="BirthText" FontSize="16" Margin="0,2,0,0"/></StackPanel>
         <StackPanel Grid.Column="1" Margin="0,0,12,0"><TextBlock Text="BIRTH CITY" Style="{StaticResource CardLabel}"/><TextBlock x:Name="BirthCityText" FontSize="15" TextWrapping="Wrap"/></StackPanel>
         <StackPanel Grid.Column="2"><TextBlock Text="BAPTISM DATE" Style="{StaticResource CardLabel}"/><TextBlock x:Name="BaptismDateText" FontSize="15" TextWrapping="Wrap"/></StackPanel>

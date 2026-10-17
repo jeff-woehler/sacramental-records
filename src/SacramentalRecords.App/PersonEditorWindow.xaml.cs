@@ -31,6 +31,8 @@ public partial class PersonEditorWindow : Window
             StatusBox.SelectedValue = person.Status;
             PdsIdBox.Text = person.PdsMemberId;
             FlocknoteIdBox.Text = person.FlocknoteId;
+            MaidenNameBox.Text = person.MaidenName;
+            DeceasedDatePicker.SelectedDate = person.DeceasedDate?.ToDateTime(TimeOnly.MinValue);
         }
         else StatusBox.SelectedIndex = 0;
         Loaded += async (_, _) => await ApplyBaptismLinkAsync();
@@ -86,7 +88,9 @@ public partial class PersonEditorWindow : Window
             Null(ChurchDbIdBox.Text), Null(BirthCityBox.Text),
             BaptismDatePicker.SelectedDate is DateTime baptismDate ? DateOnly.FromDateTime(baptismDate) : null,
             Null(BaptismChurchBox.Text), status,
-            Null(PdsIdBox.Text), Null(FlocknoteIdBox.Text), _original?.UpdatedUtc ?? DateTimeOffset.MinValue);
+            Null(PdsIdBox.Text), Null(FlocknoteIdBox.Text), _original?.UpdatedUtc ?? DateTimeOffset.MinValue,
+            Null(MaidenNameBox.Text),
+            DeceasedDatePicker.SelectedDate is DateTime deceased ? DateOnly.FromDateTime(deceased) : null);
         if (person == _original)
         {
             DialogResult = false;

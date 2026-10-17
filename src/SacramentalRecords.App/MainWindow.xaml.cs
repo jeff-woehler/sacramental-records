@@ -99,8 +99,10 @@ public partial class MainWindow : Window
             _registry = null;
         }
 
-        _packagePath = Path.GetFullPath(path);
+                _packagePath = Path.GetFullPath(path);
+        ModeText.ToolTip = _packagePath;
         while (true)
+
         {
             try
             {

@@ -5,7 +5,7 @@ using System.Text;
 using ClosedXML.Excel;
 using Microsoft.Data.Sqlite;
 
-internal static class Program
+internal static partial class Program
 {
     private const string Baptism = "baptism";
     private const string Confirmation = "confirmation";
@@ -145,6 +145,7 @@ internal static class Program
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(options.Database))!);
             if (options.Lookup is not null) LoadParishSpellings(options.Lookup);
             if (options.Commit) Backup(options.Database);
+            if (IsPdsExport(options.Input)) return RunPds(options);
 
                         var rows = Path.GetExtension(options.Input).Equals(".csv", StringComparison.OrdinalIgnoreCase)
                 ? ReadWeddingCsv(options.Input)
@@ -526,6 +527,12 @@ internal static class Program
 
     private static bool TryParseDate(string text, out DateOnly value)
     {
+        // A bare year would otherwise fall through to the OLE serial branch ("1979" -> 1905-06-01).
+        if (text.Length == 4 && text.All(char.IsDigit))
+        {
+            value = default;
+            return false;
+        }
         if (DateTime.TryParseExact(text, DateFormats, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out var exact))
         {
             value = DateOnly.FromDateTime(exact);
@@ -1132,7 +1139,7 @@ internal static class Program
         return command.ExecuteNonQuery();
     }
 
-    private static void WriteAuditEvent(SqliteConnection connection, SqliteTransaction transaction, int rows, int people, int sacraments)
+    private static void WriteAuditEvent(SqliteConnection connection, SqliteTransaction transaction, int rows, int people, int sacraments, string? summary = null)
     {
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
@@ -1141,7 +1148,7 @@ internal static class Program
         Bind(command, "$record", Guid.Empty.ToString());
         Bind(command, "$user", Environment.UserName);
         Bind(command, "$when", DateTimeOffset.UtcNow.ToString("O"));
-        Bind(command, "$summary", $"Legacy import: {rows} rows, {people} people created, {sacraments} entries");
+        Bind(command, "$summary", summary ?? $"Legacy import: {rows} rows, {people} people created, {sacraments} entries");
         command.ExecuteNonQuery();
     }
 
@@ -1156,11 +1163,21 @@ internal static class Program
             CREATE INDEX IF NOT EXISTS IX_Sacraments_Person ON Sacraments(PersonRecordId);
             """;
         command.ExecuteNonQuery();
+        foreach (var column in new[] { "MaidenName", "DeceasedDate" })
+        {
+            using var check = connection.CreateCommand();
+            check.CommandText = "SELECT COUNT(*) FROM pragma_table_info('People') WHERE name=$column";
+            Bind(check, "$column", column);
+            if (Convert.ToInt64(check.ExecuteScalar(), CultureInfo.InvariantCulture) > 0) continue;
+            using var alter = connection.CreateCommand();
+            alter.CommandText = $"ALTER TABLE People ADD COLUMN {column} TEXT";
+            alter.ExecuteNonQuery();
+        }
     }
 
     private static Options ParseArguments(string[] args)
     {
-                const string usage = "Usage: --input <legacy-sacraments.xlsm|Weddings.csv> --database <MemberRecords.sqlite> [--lookup Lookup.xlsx] [--commit] [--report report.csv]";
+                const string usage = "Usage: --input <legacy-sacraments.xlsm|Weddings.csv|PDS-export.csv> --database <MemberRecords.sqlite> [--lookup Lookup.xlsx] [--commit] [--report report.csv]";
 
         string? input = null, database = null, report = null, lookup = null;
         var commit = false;

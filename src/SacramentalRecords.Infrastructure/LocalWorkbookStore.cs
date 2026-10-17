@@ -293,7 +293,8 @@ public sealed class LocalWorkbookStore(LocalWorkbookOptions options) : IRegistry
         Value(row, h, "FamilyName"), DateValue(row, h, "BirthDate"), Null(Value(row, h, "ChurchDbId")),
         Null(Value(row, h, "BirthCity")), DateValue(row, h, "BaptismDate"), Null(Value(row, h, "BaptismChurch")),
         Value(row, h, "Status"), Null(Value(row, h, "PdsMemberId")),
-        Null(Value(row, h, "FlocknoteId")), DateTimeValue(row, h, "UpdatedUtc") ?? DateTimeOffset.MinValue);
+        Null(Value(row, h, "FlocknoteId")), DateTimeValue(row, h, "UpdatedUtc") ?? DateTimeOffset.MinValue,
+        Null(Value(row, h, "MaidenName")), DateValue(row, h, "DeceasedDate"));
 
     private static SacramentRecord ToSacrament(IXLRow row, Dictionary<string, int> h) => new(
         Guid.Parse(Value(row, h, "RecordId")), Guid.Parse(Value(row, h, "PersonRecordId")), Value(row, h, "SacramentType"),
@@ -307,7 +308,7 @@ public sealed class LocalWorkbookStore(LocalWorkbookOptions options) : IRegistry
     private static bool IsTrue(string value) => value.Trim() is "1" || bool.TryParse(value, out var b) && b;
     private static void Put(IXLRow row, Dictionary<string, int> h, string name, object? value) { if (h.TryGetValue(name, out var c)) row.Cell(c).Value = value?.ToString() ?? ""; }
     private static void WritePerson(IXLRow row, Dictionary<string, int> h, Person p)
-    { Put(row,h,"RecordId",p.RecordId); Put(row,h,"GivenName",p.GivenName); Put(row,h,"MiddleName",p.MiddleName); Put(row,h,"FamilyName",p.FamilyName); Put(row,h,"BirthDate",p.BirthDate); Put(row,h,"ChurchDbId",p.ChurchDbId); Put(row,h,"BirthCity",p.BirthCity); Put(row,h,"BaptismDate",p.BaptismDate); Put(row,h,"BaptismChurch",p.BaptismChurch); Put(row,h,"Status",p.Status); Put(row,h,"PdsMemberId",p.PdsMemberId); Put(row,h,"FlocknoteId",p.FlocknoteId); Put(row,h,"UpdatedUtc",p.UpdatedUtc); }
+    { Put(row,h,"RecordId",p.RecordId); Put(row,h,"GivenName",p.GivenName); Put(row,h,"MiddleName",p.MiddleName); Put(row,h,"FamilyName",p.FamilyName); Put(row,h,"BirthDate",p.BirthDate); Put(row,h,"ChurchDbId",p.ChurchDbId); Put(row,h,"BirthCity",p.BirthCity); Put(row,h,"BaptismDate",p.BaptismDate); Put(row,h,"BaptismChurch",p.BaptismChurch); Put(row,h,"Status",p.Status); Put(row,h,"PdsMemberId",p.PdsMemberId); Put(row,h,"FlocknoteId",p.FlocknoteId); Put(row,h,"UpdatedUtc",p.UpdatedUtc); Put(row,h,"MaidenName",p.MaidenName); Put(row,h,"DeceasedDate",p.DeceasedDate); }
     private static void WriteSacrament(IXLRow row, Dictionary<string, int> h, SacramentRecord r)
     { Put(row,h,"RecordId",r.RecordId); Put(row,h,"PersonRecordId",r.PersonRecordId); Put(row,h,"SacramentType",r.SacramentType); Put(row,h,"SacramentDate",r.SacramentDate); Put(row,h,"Name",r.Name); Put(row,h,"Place",r.Place); Put(row,h,"Minister",r.Minister); Put(row,h,"FatherName",r.FatherName); Put(row,h,"MotherName",r.MotherName); Put(row,h,"SponsorOne",r.SponsorOne); Put(row,h,"SponsorTwo",r.SponsorTwo); Put(row,h,"SponsorTwoIsChristianWitness",r.SponsorTwoIsChristianWitness); Put(row,h,"ProxyOne",r.ProxyOne); Put(row,h,"ProxyTwo",r.ProxyTwo); Put(row,h,"Volume",r.Volume); Put(row,h,"Page",r.Page); Put(row,h,"Item",r.Item); Put(row,h,"Details",r.Details); Put(row,h,"CanonicalNotations",r.CanonicalNotations); Put(row,h,"UpdatedUtc",r.UpdatedUtc); }
     private static void SaveTable(XLWorkbook book, IXLWorksheet sheet, string tableName)

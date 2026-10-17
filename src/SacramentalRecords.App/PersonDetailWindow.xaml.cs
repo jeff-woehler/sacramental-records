@@ -43,6 +43,8 @@ public partial class PersonDetailWindow : Window
             FlocknoteText.Text = person.FlocknoteId ?? string.Empty;
             ChurchDbText.Text = person.ChurchDbId ?? string.Empty;
             BirthCityText.Text = person.BirthCity ?? "—";
+            MaidenNameText.Text = person.MaidenName ?? "—";
+            DeceasedText.Text = person.DeceasedDate?.ToString("d", CultureInfo.CurrentCulture) ?? "—";
             var records = await _registry.GetSacramentsAsync(person.RecordId);
             _sacraments = records;
             _baptism = records.FirstOrDefault(record =>
