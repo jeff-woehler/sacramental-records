@@ -89,7 +89,7 @@ internal static class Program
         Details: ["C-Remarks1", "C-Remarks2", "C-Misc1", "C-Misc2"]);
 
     // Person-level columns repeat identically on every sheet.
-    private static readonly string[] IdColumns = ["PersonId", "Person ID", "ChurchDbId"];
+    private static readonly string[] IdColumns = ["PersonId", "Person ID", "Person Id", "ChurchDbId"];
     private static readonly string[] FirstColumns = ["FirstName", "First Name", "GivenName"];
     private static readonly string[] LastColumns = ["Surname", "LastName", "Last Name", "FamilyName"];
     private static readonly string[] BirthColumns = ["BirthDate", "Birth Date", "DOB"];
@@ -121,6 +121,7 @@ internal static class Program
     private sealed record Options(string Input, string Database, bool Commit, string Report, string? Lookup);
         private sealed record SourceRow(string Sheet, int Number, Mapping Map, Dictionary<string, string> Values);
         private sealed record KnownPerson(Guid Id, string? ChurchId, string Given, string? Middle, string Family, DateOnly? Birth, DateOnly? Baptism, string? Father, string? Mother);
+        private sealed record SacramentEvidence(Guid PersonId, string Type, string? Volume, string? Page, string? Item);
 
 
 
@@ -129,6 +130,8 @@ internal static class Program
     private static readonly Dictionary<string, string> LooseParishSpellings = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, string> AmbiguousParishOutputs = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, int> UnmappedParishes = new(StringComparer.Ordinal);
+    private static readonly Dictionary<Guid, (string? Father, string? Mother)> KnownParents = [];
+    private static readonly Dictionary<Guid, HashSet<string>> KnownSacramentTypes = [];
     private static int _errors;
     private static int _warnings;
 
@@ -156,7 +159,8 @@ internal static class Program
 
                         var people = LoadPeople(connection, transaction);
                         LoadBaptismDates(connection, transaction, people);
-            ReportDuplicatePeople(people);
+            ReportDuplicatePeople(connection, transaction, people);
+            LoadKnownParentsAndTypes(connection, transaction);
             var byChurchId = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
 
             var byNameKey = new Dictionary<string, List<Guid>>(StringComparer.Ordinal);
@@ -203,14 +207,15 @@ internal static class Program
                     }
                     else matched++;
 
-                    if (!seenSacraments.Add((person.Id, row.Map.Type)))
+                                        if (!seenSacraments.Add((person.Id, row.Map.Type)))
                         Warn(row, "duplicate", churchId, row.Map.Type,
-                            "the same person already has a record of this sacrament from another row; both were kept");
+                            $"this row resolved to {PersonIdentity(person)}, which already has a {row.Map.Type} record from another source row; both were kept. ACTION: review the two source rows and retain only the correct sacrament entry if they are duplicates");
 
                                         WarnSuspiciousMarriage(row, person, birth, baptism);
                     var recordId = DeterministicId($"sacrament|{row.Sheet}|{row.Number}|{row.Map.Type}|{row.Values.GetValueOrDefault("__WeddingSide", "single")}");
 
                     InsertSacrament(connection, transaction, recordId, person.Id, row);
+                    RememberSacrament(person.Id, row);
                     sacraments++;
 
                     Report.Add(Csv(row.Sheet, row.Number.ToString(CultureInfo.InvariantCulture), row.Map.Type, "info",
@@ -333,8 +338,8 @@ internal static class Program
                 var header = cell.GetString().Trim();
                 if (header.Length > 0) headers.TryAdd(header, cell.Address.ColumnNumber);
             }
-            if (!headers.Keys.Any(h => IdColumns.Contains(h, StringComparer.OrdinalIgnoreCase)) &&
-                !headers.Keys.Any(h => FirstColumns.Contains(h, StringComparer.OrdinalIgnoreCase)))
+                        if (!headers.Keys.Any(h => HasAlias(h, IdColumns)) &&
+                !headers.Keys.Any(h => HasAlias(h, FirstColumns)))
                 continue;
 
             RequireColumns(sheet.Name, headers, map);
@@ -363,7 +368,7 @@ internal static class Program
             ("first name", FirstColumns), ("surname", LastColumns), ("person id", IdColumns)
         };
         var missing = required
-            .Where(r => !r.Aliases.Any(a => headers.ContainsKey(a)))
+            .Where(r => !headers.Keys.Any(h => HasAlias(h, r.Aliases)))
             .Select(r => $"{r.Label} ({string.Join(" / ", r.Aliases)})")
             .ToList();
         if (missing.Count > 0)
@@ -471,13 +476,23 @@ internal static class Program
         catch { return text; }
     }
 
-    private static string? Value(SourceRow row, params string[] aliases)
+        private static string? Value(SourceRow row, params string[] aliases)
     {
         foreach (var alias in aliases)
             if (row.Values.TryGetValue(alias, out var raw) && Clean(raw) is { } value)
                 return value;
+
+        // Legacy headers vary in spacing and punctuation (for example, Person Id,
+        // Person-ID, and PersonID). Use the normalized header as a fallback so a
+        // visually correct ID column cannot silently become a name match.
+        foreach (var (header, raw) in row.Values)
+            if (aliases.Any(alias => Normalize(header) == Normalize(alias)) && Clean(raw) is { } value)
+                return value;
         return null;
     }
+
+    private static bool HasAlias(string header, IEnumerable<string> aliases) =>
+        aliases.Any(alias => Normalize(header) == Normalize(alias));
 
     /// <summary>Names are taken verbatim: the register itself records entries such as "Not Known" for a stillborn infant.</summary>
     private static string? Name(SourceRow row, params string[] aliases)
@@ -548,21 +563,63 @@ internal static class Program
                 if (churchId is not null && byChurchId.TryGetValue(churchId, out var id))
             return people[id];
 
-        // Legacy PersonId values are not globally reliable: the workbook contains the same
-        // person under different IDs (and occasional spelling variants). Birth date, baptism
-        // date, and surname are a safer reconciliation key when all three are present.
+                // Legacy PersonId values are not globally reliable: the workbook contains the same
+        // person under different IDs (and occasional spelling variants). Dates and surname alone
+        // are not safe enough, however: twins can share all of them. Require the normalized full
+        // name as well before reconciling an unknown legacy ID.
         if (churchId is not null && birth is not null && baptism is not null)
         {
-            var legacyCandidates = byBirthBaptismFamily.GetValueOrDefault(BirthBaptismFamilyKey(family, birth.Value, baptism.Value), []);
+            var legacyCandidates = byBirthBaptismFamily.GetValueOrDefault(BirthBaptismFamilyKey(family, birth.Value, baptism.Value), [])
+                .Where(candidateId => NameKeyNoDate(given, family) ==
+                    NameKeyNoDate($"{people[candidateId].Given} {people[candidateId].Middle}", people[candidateId].Family))
+                .ToList();
             if (legacyCandidates.Count == 1)
             {
+                var matchedPerson = people[legacyCandidates[0]];
                 Warn(row, "legacy-id-reconciled", churchId, "PersonId",
-                    $"legacy PersonId {churchId} differed, but matched an existing person by surname, birth date, and baptism date");
-                return people[legacyCandidates[0]];
+                    $"source legacy PersonId {churchId} did not match an existing PersonId, but was reconciled to {PersonIdentity(matchedPerson)} using full name, surname, birth date, and baptism date. ACTION: verify that {churchId} and {matchedPerson.ChurchId ?? "(no legacy ID)"} refer to the same person; no new person was created");
+                return matchedPerson;
             }
-            if (legacyCandidates.Count > 1)
-                throw new InvalidDataException($"legacy PersonId {churchId} is unknown and {legacyCandidates.Count} people share the same surname, birth date, and baptism date");
+                }
+
+        // Same person registered under different legacy IDs for different sacraments. Require full name +
+        // (birth or baptism date) + both parents to agree, a single candidate, and that the candidate has
+        // no record of this sacrament type yet; twins differ by name and are never merged.
+        if (churchId is not null && (birth is not null || baptism is not null))
+        {
+            var father = Value(row, row.Map.Father);
+            var mother = Value(row, row.Map.Mother);
+            if (father is not null && mother is not null)
+            {
+                // A candidate may lack the birth date (or baptism date) the row has; one agreeing date is
+                // enough as long as neither side contradicts the other.
+                var pool = byNameBaptism.GetValueOrDefault(NameKeyNoDate(given, family), [])
+                    .Where(candidateId =>
+                        (birth is null || people[candidateId].Birth is null || people[candidateId].Birth == birth) &&
+                        (baptism is null || people[candidateId].Baptism is null || people[candidateId].Baptism == baptism) &&
+                        (birth is not null && people[candidateId].Birth == birth || baptism is not null && people[candidateId].Baptism == baptism));
+                var sameParents = pool
+                    .Where(candidateId =>
+                        people[candidateId].ChurchId != churchId &&
+                        !(KnownSacramentTypes.TryGetValue(candidateId, out var types) && types.Contains(row.Map.Type)) &&
+                        KnownParents.TryGetValue(candidateId, out var parents) &&
+                        parents.Father is not null && parents.Mother is not null &&
+                        SameParent(parents.Father, father) && SameParent(parents.Mother, mother))
+                    .ToList();
+                if (sameParents.Count == 1)
+                {
+                    var matchedPerson = people[sameParents[0]];
+                    Warn(row, "legacy-id-reconciled", churchId, "PersonId",
+                        $"source legacy PersonId {churchId} did not match an existing PersonId, but was reconciled to {PersonIdentity(matchedPerson)} using full name, birth/baptism date, and both parents' names. ACTION: verify that {churchId} and {matchedPerson.ChurchId ?? "(no legacy ID)"} refer to the same person; no new person was created");
+                    return matchedPerson;
+                }
+            }
         }
+
+        // An unrecognized legacy ID must not fall through to name/date matching. Doing so can
+        // attach a twin's sacrament to the first person encountered with the same dates and name.
+        // Preserve the source ID by creating a separate person instead.
+        if (churchId is not null) return null;
 
         var candidates = new List<Guid>();
 
@@ -576,12 +633,6 @@ internal static class Program
             candidates = byNameBaptism.GetValueOrDefault(NameKeyNoDate(given, family), []);
             if (candidates.Count == 1)
                 Warn(row, "weak-name-match", null, "PersonId", "marriage row has no birth or baptism date; matched on unique normalized name only");
-        }
-        else if (churchId is not null)
-        {
-            // An unknown legacy PersonId is sufficient to create a new person. Birth date is
-            // required only when trying to identify an existing person without a legacy ID.
-            return null;
         }
         else throw new InvalidDataException("no PersonId and no birth date; the person cannot be identified safely");
 
@@ -695,12 +746,13 @@ internal static class Program
                 return people;
     }
 
-        private static void ReportDuplicatePeople(Dictionary<Guid, KnownPerson> people)
-    {
-        // This is deliberately a report-only pass. It never merges records automatically. The
-        // strongest useful duplicate signal in this source is matching family, birth date, baptism
-        // date, and parents, with a one-character given-name difference catching Garvin/Garwin.
-        var groups = people.Values
+        private static void ReportDuplicatePeople(SqliteConnection connection, SqliteTransaction transaction, Dictionary<Guid, KnownPerson> people)
+        {
+            // This is deliberately a report-only pass. It never merges records automatically. Matching
+            // family, dates, parents, and similar names is only a candidate signal: twins commonly share
+            // all of those values. Existing sacrament evidence is therefore checked before warning.
+            var evidence = LoadSacramentEvidence(connection, transaction);
+            var groups = people.Values
             .Where(p => p.Birth is not null && p.Baptism is not null && p.Father is not null && p.Mother is not null)
             .GroupBy(p => $"{Normalize(p.Family)}|{p.Birth:yyyy-MM-dd}|{p.Baptism:yyyy-MM-dd}|{Normalize(p.Father!)}|{Normalize(p.Mother!)}");
         foreach (var group in groups)
@@ -711,19 +763,67 @@ internal static class Program
             {
                 var left = Normalize($"{members[i].Given} {members[i].Middle}");
                 var right = Normalize($"{members[j].Given} {members[j].Middle}");
-                if (left == right || Levenshtein(left, right) <= 1)
+                                if ((left == right || Levenshtein(left, right) <= 1) &&
+                    DistinctSacramentEvidence(members[i].Id, members[j].Id, evidence) is null)
                 {
                     _warnings++;
                     Report.Add(Csv("(preflight)", string.Empty, string.Empty, "warning", "duplicate-person", members[i].Id.ToString(),
                         members[j].Id.ToString(),
-                        $"possible duplicate ({Confidence(left, right)} confidence): {PersonSummary(members[i])} / {PersonSummary(members[j])}; same family, birth/baptism dates, and parents; review before merging"));
+                        $"possible duplicate ({Confidence(left, right)} confidence): {PersonSummary(members[i])} / {PersonSummary(members[j])}; same family, birth/baptism dates, and parents; no conflicting sacrament register evidence was found; review before merging"));
                 }
             }
         }
     }
 
-    private static string PersonSummary(KnownPerson person) =>
+        private static string PersonSummary(KnownPerson person) =>
         $"{person.Given} {person.Middle} {person.Family} [birth {person.Birth:yyyy-MM-dd}, baptism {person.Baptism:yyyy-MM-dd}, legacy {person.ChurchId ?? "none"}]";
+
+        private static string PersonIdentity(KnownPerson person) =>
+        $"existing person legacy PersonId {person.ChurchId ?? "(none)"} (RecordId {person.Id})";
+
+    private static Dictionary<Guid, List<SacramentEvidence>> LoadSacramentEvidence(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        var evidence = new Dictionary<Guid, List<SacramentEvidence>>();
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT PersonRecordId,SacramentType,Volume,Page,Item FROM Sacraments";
+        using var reader = command.ExecuteReader();
+        while (reader.Read() && Guid.TryParse(reader.GetString(0), out var personId))
+        {
+            var item = new SacramentEvidence(
+                personId,
+                reader.GetString(1),
+                reader.IsDBNull(2) ? null : reader.GetString(2),
+                reader.IsDBNull(3) ? null : reader.GetString(3),
+                reader.IsDBNull(4) ? null : reader.GetString(4));
+            evidence.TryGetValue(personId, out var records);
+            (records ??= evidence[personId] = []).Add(item);
+        }
+        return evidence;
+    }
+
+    private static string? DistinctSacramentEvidence(Guid leftId, Guid rightId, Dictionary<Guid, List<SacramentEvidence>> evidence)
+    {
+        var left = evidence.GetValueOrDefault(leftId, []);
+        var right = evidence.GetValueOrDefault(rightId, []);
+
+        // A confirmation for each person is strong evidence that these are two distinct people.
+        if (left.Any(r => r.Type == Confirmation) && right.Any(r => r.Type == Confirmation))
+            return "both people have confirmation records";
+
+        // Different register references identify separate entries even when the people have the
+        // same family, dates, parents, and nearly identical names. Ignore comparisons where all
+        // three fields are blank because those records provide no distinguishing evidence.
+        foreach (var leftRecord in left)
+        foreach (var rightRecord in right.Where(r => r.Type == leftRecord.Type))
+        {
+            var leftReference = (leftRecord.Volume, leftRecord.Page, leftRecord.Item);
+            var rightReference = (rightRecord.Volume, rightRecord.Page, rightRecord.Item);
+            if (leftReference != (null, null, null) && rightReference != (null, null, null) && leftReference != rightReference)
+                return $"different {leftRecord.Type} register Volume/Page/Item values";
+        }
+        return null;
+    }
 
     private static string Confidence(string left, string right) => left == right ? "very-high" : "high";
 
@@ -739,6 +839,49 @@ internal static class Program
             previous = current;
         }
         return previous[right.Length];
+    }
+
+    private static void LoadKnownParentsAndTypes(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT PersonRecordId,SacramentType,FatherName,MotherName FROM Sacraments";
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            if (!Guid.TryParse(reader.GetString(0), out var id)) continue;
+            if (!KnownSacramentTypes.TryGetValue(id, out var types)) KnownSacramentTypes[id] = types = [];
+            types.Add(reader.GetString(1));
+            RememberParents(id, reader.IsDBNull(2) ? null : reader.GetString(2), reader.IsDBNull(3) ? null : reader.GetString(3));
+        }
+    }
+
+    // Registers spell parents differently (middle initials, married surnames); accept when one name's tokens are within the other's.
+    private static bool SameParent(string left, string right)
+    {
+        if (Normalize(left) == Normalize(right)) return true;
+        static HashSet<string> Tokens(string s) => s.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Select(Normalize).Where(t => t.Length > 0).ToHashSet(StringComparer.Ordinal);
+        var (a, b) = (Tokens(left), Tokens(right));
+        var (small, large) = a.Count <= b.Count ? (a, b) : (b, a);
+        if (small.Count >= 2 && small.IsSubsetOf(large)) return true;
+        // Nicknames (Dave / David): same surname and same first initial.
+        var (l, r) = (Normalize(left.Trim().Split(' ')[0]), Normalize(right.Trim().Split(' ')[0]));
+        var (ll, rl) = (Normalize(left.Trim().Split(' ')[^1]), Normalize(right.Trim().Split(' ')[^1]));
+        return l.Length > 0 && r.Length > 0 && l[0] == r[0] && ll == rl && ll.Length > 0;
+    }
+
+    private static void RememberParents(Guid id, string? father, string? mother)
+    {
+        var current = KnownParents.GetValueOrDefault(id);
+        KnownParents[id] = (current.Father ?? father, current.Mother ?? mother);
+    }
+
+    private static void RememberSacrament(Guid id, SourceRow row)
+    {
+        if (!KnownSacramentTypes.TryGetValue(id, out var types)) KnownSacramentTypes[id] = types = [];
+        types.Add(row.Map.Type);
+        RememberParents(id, Value(row, row.Map.Father), Value(row, row.Map.Mother));
     }
 
     private static void LoadBaptismDates(SqliteConnection connection, SqliteTransaction transaction, Dictionary<Guid, KnownPerson> people)
