@@ -102,6 +102,7 @@ internal static class WordBaptismCertificateGenerator
         var missingDateProperties = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         SetTextProperty(properties, "Cert.FullName", fullName);
+        SetTextProperty(properties, "Cert.ChurchAddress", MainWindow.FileSettings.GetValueOrDefault(MainWindow.ChurchAddressSettingKey) ?? string.Empty);
         SetTextProperty(properties, "Cert.Father", Value(baptism.FatherName));
         SetTextProperty(properties, "Cert.Mother", Value(baptism.MotherName));
         SetTextProperty(properties, "Cert.BirthCity", Value(person.BirthCity));

@@ -18,6 +18,7 @@ public partial class MainWindow : Window
     private const string LegacyPackageExtension = ".dbpackage";
     private const string PackageExtension = ".srdb";
     internal const string BaptismTemplateSettingKey = "SACRAMENTAL_RECORDS_BAPTISM_TEMPLATE";
+    internal const string ChurchAddressSettingKey = "SACRAMENTAL_RECORDS_CHURCH_ADDRESS";
     internal static readonly Dictionary<string, string?> FileSettings = LoadFileSettings();
 
     private RegistryService? _registry;

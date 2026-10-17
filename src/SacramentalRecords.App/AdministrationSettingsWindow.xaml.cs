@@ -10,6 +10,7 @@ public partial class AdministrationSettingsWindow : Window
     {
         InitializeComponent();
         WindowControlHelper.RemoveMinimizeButton(this);
+        ChurchAddressText.Text = MainWindow.FileSettings.GetValueOrDefault(MainWindow.ChurchAddressSettingKey) ?? string.Empty;
         RefreshTemplatePath();
     }
 
@@ -104,6 +105,8 @@ public partial class AdministrationSettingsWindow : Window
 
     private void Ok_Click(object sender, RoutedEventArgs e)
     {
+        MainWindow.FileSettings[MainWindow.ChurchAddressSettingKey] = ChurchAddressText.Text.Trim();
+        MainWindow.SaveFileSettings();
         DialogResult = true;
     }
 }

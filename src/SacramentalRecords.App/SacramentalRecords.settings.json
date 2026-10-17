@@ -1,5 +1,6 @@
 {
   "SACRAMENTAL_RECORDS_PACKAGE": "",
   "SACRAMENTAL_RECORDS_BAPTISM_TEMPLATE": "",
+  "SACRAMENTAL_RECORDS_CHURCH_ADDRESS": "",
   "SACRAMENTAL_RECORDS_UPDATE_MANIFEST": "https://raw.githubusercontent.com/jeff-woehler/sacramental-records/main/releases/latest.json"
 }

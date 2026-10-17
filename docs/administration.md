@@ -9,6 +9,7 @@ The package and update-manifest settings are stored in `SacramentalRecords.setti
 - `SACRAMENTAL_RECORDS_PACKAGE` — full path to the `.srdb` package.
 - `SACRAMENTAL_RECORDS_UPDATE_MANIFEST` — URL of the release manifest used for update checks.
 - `SACRAMENTAL_RECORDS_BAPTISM_TEMPLATE` — optional path to a custom Word template.
+- `SACRAMENTAL_RECORDS_CHURCH_ADDRESS` — church address inserted into baptism certificate Word templates.
 
 A legacy `.dbpackage` setting is migrated to the matching `.srdb` filename on startup when it is safe to do so. The application does not overwrite an existing `.srdb` file.
 
@@ -35,7 +36,7 @@ The release package contains application files only; parish data is intentionall
 
 ## Certificate templates
 
-Use **Admin > Settings** to download, select, clear, or open the Word baptism certificate template. Test a certificate after changing a template. Word must be installed and configured on the workstation; template or Word errors do not alter the registry data.
+Use **Admin > Settings** to enter the church address and to download, select, clear, or open the Word baptism certificate template. To place the address in a template, add a Word `DOCPROPERTY` field for `Cert.ChurchAddress`. Test a certificate after changing a template. Word must be installed and configured on the workstation; template or Word errors do not alter the registry data.
 
 ## Data-handling rules
 
