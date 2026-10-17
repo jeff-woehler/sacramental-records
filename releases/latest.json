@@ -1,6 +1,6 @@
 {
-    "version":  "1.1.16",
-    "package":  "SacramentalRecords-1.1.16.zip",
-    "sha256":  "EC3E0D8743FEA45701D1EFBAA154118B36660CCE5BC2894BE497598D19C6E4CD",
-    "notes":  "Included new registry entry types: Religious Profession and Diaconate. Improved file management and error handling. Changed filename extension."
+    "version":  "1.2.0",
+    "package":  "SacramentalRecords-1.2.0.zip",
+    "sha256":  "A4DAE590204AA805D3B870D6D233E48E4114522C837276851568F78E31E07859",
+    "notes":  ""
 }
