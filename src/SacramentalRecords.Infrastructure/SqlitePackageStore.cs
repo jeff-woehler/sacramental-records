@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.IO.Compression;
+using System.Text;
 using Microsoft.Data.Sqlite;
 using SacramentalRecords.Application;
 using SacramentalRecords.Domain;
@@ -13,9 +14,14 @@ namespace SacramentalRecords.Infrastructure;
 public sealed class PackageLockedException : IOException
 {
     public string LockPath { get; }
+    public string? LockOwnerMachineName { get; }
 
     public PackageLockedException(string lockPath, IOException innerException)
-        : base($"The package is already open. Lock file: {lockPath}", innerException) => LockPath = lockPath;
+        : base($"The package is already open. Lock file: {lockPath}", innerException)
+    {
+        LockPath = lockPath;
+        LockOwnerMachineName = SqlitePackageStore.TryReadLockOwner(lockPath);
+    }
 }
 
 public sealed class SqlitePackageStore : IRegistryStore, IAsyncDisposable
@@ -45,7 +51,13 @@ public sealed class SqlitePackageStore : IRegistryStore, IAsyncDisposable
                             {
                                 try
                                 {
-                                    _lock = new FileStream(_packagePath + ".lock", FileMode.CreateNew, FileAccess.Write, FileShare.None);
+                                    // Allow the resolution dialog to read the owner while retaining
+                                    // exclusive ownership for stale-lock detection and replacement.
+                                    _lock = new FileStream(_packagePath + ".lock", FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+                                    using var writer = new StreamWriter(_lock, new UTF8Encoding(false), leaveOpen: true);
+                                    writer.Write(Environment.MachineName);
+                                    writer.Flush();
+                                    _lock.Flush(true);
                                 }
                                 catch (IOException ex)
                                 {
@@ -156,7 +168,32 @@ public sealed class SqlitePackageStore : IRegistryStore, IAsyncDisposable
         finally { _gate.Release(); }
     }
 
-        /// <summary>
+    public static string? TryReadLockOwner(string lockPath)
+    {
+        // A newly-created lock can be observed briefly before its owner text has
+        // been flushed. Retry so the dialog does not report an unknown owner.
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            try
+            {
+                // The owning process has the file open for writing. Explicitly share
+                // write access while reading; File.ReadAllText's default share mode
+                // can otherwise reject an actively held lock.
+                using var stream = new FileStream(lockPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                using var reader = new StreamReader(stream, Encoding.UTF8);
+                var machineName = reader.ReadToEnd().Trim();
+                if (!string.IsNullOrWhiteSpace(machineName)) return machineName;
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+
+            if (attempt < 4) Thread.Sleep(25);
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Removes a lock only when no process currently has it open. This makes it safe
     /// for a user to recover from a crash without deleting an active session's lock.
     /// </summary>

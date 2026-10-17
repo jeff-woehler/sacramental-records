@@ -13,11 +13,14 @@ public partial class LockResolutionWindow : Window
 {
     public LockResolutionChoice Choice { get; private set; } = LockResolutionChoice.Cancel;
 
-    public LockResolutionWindow(string lockPath)
+        public LockResolutionWindow(string lockPath, string? lockOwnerMachineName = null)
     {
         InitializeComponent();
         WindowControlHelper.RemoveMinimizeButton(this);
         LockPathText.Text = lockPath;
+        LockOwnerText.Text = string.IsNullOrWhiteSpace(lockOwnerMachineName)
+            ? "The machine holding this lock could not be identified."
+            : $"Currently open on machine: {lockOwnerMachineName}";
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e) => CloseWith(LockResolutionChoice.Cancel);

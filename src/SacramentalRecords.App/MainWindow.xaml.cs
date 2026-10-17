@@ -118,7 +118,7 @@ public partial class MainWindow : Window
             {
                                 // MainWindow may still be loading the saved package from its constructor,
                 // before it has been shown. An unshown Window cannot be used as a WPF owner.
-                var lockDialog = new LockResolutionWindow(ex.LockPath);
+                var lockDialog = new LockResolutionWindow(ex.LockPath, ex.LockOwnerMachineName);
                 if (IsVisible) lockDialog.Owner = this;
                 lockDialog.ShowDialog();
 
