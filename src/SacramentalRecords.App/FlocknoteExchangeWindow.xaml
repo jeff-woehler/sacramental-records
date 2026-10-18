@@ -1,0 +1,211 @@
+<Window x:Class="SacramentalRecords.App.FlocknoteExchangeWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Flocknote Exchange" Height="760" Width="1180" MinHeight="560" MinWidth="900"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+  <Window.Resources>
+    <Style x:Key="StepText" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+      <Setter Property="Margin" Value="0,0,6,0" />
+    </Style>
+    <Style x:Key="GridCombo" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="Padding" Value="6,2" />
+      <Setter Property="FontSize" Value="13" />
+    </Style>
+  </Window.Resources>
+  <Grid Margin="28">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0" Margin="0,0,0,12">
+      <TextBlock Text="FLOCKNOTE EXCHANGE" Foreground="{StaticResource AccentBrush}" FontSize="13" FontWeight="Bold" />
+      <TextBlock x:Name="TitleText" Text="Exchange with Flocknote" Style="{StaticResource DisplayText}" FontSize="30" FontWeight="Bold" Margin="0,4,0,0" />
+    </StackPanel>
+
+    <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="14,8" Margin="0,0,0,14">
+      <StackPanel Orientation="Horizontal">
+        <TextBlock x:Name="StepChoose" Text="1. Choose file" Style="{StaticResource StepText}" />
+        <TextBlock Text="→" Style="{StaticResource StepText}" />
+        <TextBlock x:Name="StepScope" Text="2. Confirm scope" Style="{StaticResource StepText}" />
+        <TextBlock Text="→" Style="{StaticResource StepText}" />
+        <TextBlock x:Name="StepMatch" Text="3. Match people" Style="{StaticResource StepText}" />
+        <TextBlock Text="→" Style="{StaticResource StepText}" />
+        <TextBlock x:Name="StepReview" Text="4. Review changes" Style="{StaticResource StepText}" />
+        <TextBlock Text="→" Style="{StaticResource StepText}" />
+        <TextBlock x:Name="StepApply" Text="5. Apply / publish" Style="{StaticResource StepText}" />
+      </StackPanel>
+    </Border>
+
+    <Grid Grid.Row="2">
+      <!-- Step 1: choose direction and file -->
+      <ScrollViewer x:Name="ChoosePanel" VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+          <GroupBox Header="What would you like to do?">
+            <StackPanel Margin="6,8">
+              <RadioButton x:Name="ImportRadio" GroupName="Direction" IsChecked="True" Margin="0,0,0,10" FontSize="15">
+                <TextBlock TextWrapping="Wrap"><Run FontWeight="SemiBold" Text="Import from Flocknote"/><Run Text=" — review Flocknote sacrament values and bring the approved ones into the registry."/></TextBlock>
+              </RadioButton>
+              <RadioButton x:Name="ExportRadio" GroupName="Direction" FontSize="15">
+                <TextBlock TextWrapping="Wrap"><Run FontWeight="SemiBold" Text="Prepare updates for Flocknote"/><Run Text=" — save a new spreadsheet of approved registry values for Flocknote. The snapshot file is never changed."/></TextBlock>
+              </RadioButton>
+            </StackPanel>
+          </GroupBox>
+          <GroupBox Header="Flocknote Sacrament snapshot" Margin="0,14,0,0">
+            <StackPanel Margin="6,8">
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="SnapshotPathText" IsReadOnly="True" VerticalContentAlignment="Center" />
+                <Button Grid.Column="1" Content="Locate file" Width="120" Margin="10,0,0,0" Style="{StaticResource SecondaryButton}" Click="Browse_Click" />
+              </Grid>
+              <TextBlock x:Name="SnapshotInfoText" TextWrapping="Wrap" Margin="0,10,0,0" Foreground="{StaticResource MutedBrush}" />
+            </StackPanel>
+          </GroupBox>
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- Step 2: scope -->
+      <ScrollViewer x:Name="ScopePanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+        <StackPanel>
+          <TextBlock x:Name="ScopeSummaryText" TextWrapping="Wrap" Margin="0,0,0,14" />
+          <GroupBox x:Name="ImportScopeBox" Header="Which people should be imported?">
+            <StackPanel Margin="6,8">
+              <RadioButton x:Name="ImportLinkedOnlyRadio" GroupName="ImportScope" IsChecked="True" Margin="0,0,0,10" FontSize="15"
+                           Content="Linked people only (people whose Flocknote ID is already in the registry)" />
+              <RadioButton x:Name="ImportAllRadio" GroupName="ImportScope" FontSize="15"
+                           Content="All rows in the snapshot (also match unlinked rows and add new people)" />
+            </StackPanel>
+          </GroupBox>
+          <GroupBox x:Name="ExportScopeBox" Header="Which people should be in the update file?">
+            <StackPanel Margin="6,8">
+              <RadioButton x:Name="ExportChangedOnlyRadio" GroupName="ExportScope" IsChecked="True" Margin="0,0,0,10" FontSize="15"
+                           Content="Only linked people with approved registry values to send" />
+              <RadioButton x:Name="ExportAllRadio" GroupName="ExportScope" FontSize="15"
+                           Content="All linked people (complete snapshot rows, updated with approved registry values)" />
+            </StackPanel>
+          </GroupBox>
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- Step 3: match people -->
+      <Grid x:Name="MatchPanel" Visibility="Collapsed">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <DockPanel Margin="0,0,0,10">
+          <CheckBox x:Name="MatchCandidatesOnly" DockPanel.Dock="Right" Content="Show only possible matches" VerticalAlignment="Center" Checked="MatchFilter_Changed" Unchecked="MatchFilter_Changed" />
+          <TextBlock x:Name="MatchSummaryText" TextWrapping="Wrap" VerticalAlignment="Center" />
+        </DockPanel>
+        <DataGrid x:Name="MatchGrid" Grid.Row="1" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                  SelectionMode="Extended" RowHeight="44" EnableRowVirtualization="True">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Flocknote name" Binding="{Binding Row.Name}" Width="1.2*" IsReadOnly="True" />
+            <DataGridTextColumn Header="Flocknote ID" Binding="{Binding Row.FlocknoteId}" Width="110" IsReadOnly="True" />
+            <DataGridTextColumn Header="Why" Binding="{Binding Reason}" Width="1.3*" IsReadOnly="True" />
+            <DataGridTemplateColumn Header="Action" Width="2*">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <ComboBox Style="{StaticResource GridCombo}" ItemsSource="{Binding Options}" DisplayMemberPath="Label"
+                            SelectedItem="{Binding Selected, UpdateSourceTrigger=PropertyChanged}" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+          </DataGrid.Columns>
+        </DataGrid>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+          <TextBlock Text="Set selected rows to:" VerticalAlignment="Center" Margin="0,0,10,0" />
+          <Button Content="Create new person" Style="{StaticResource SecondaryButton}" Click="MatchCreate_Click" />
+          <Button Content="Skip for now" Margin="10,0,0,0" Style="{StaticResource SecondaryButton}" Click="MatchSkip_Click" />
+        </StackPanel>
+      </Grid>
+
+      <!-- Step 4: review -->
+      <Grid x:Name="ReviewPanel" Visibility="Collapsed">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <DockPanel Margin="0,0,0,10">
+          <TextBlock Text="Show:" VerticalAlignment="Center" Margin="0,0,10,0" />
+          <ComboBox x:Name="GroupFilter" Width="430" DisplayMemberPath="Label" SelectionChanged="GroupFilter_SelectionChanged" />
+          <TextBlock x:Name="ReviewSummaryText" TextWrapping="Wrap" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource MutedBrush}" />
+        </DockPanel>
+        <DataGrid x:Name="ReviewGrid" Grid.Row="1" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                  SelectionMode="Extended" RowHeight="44" EnableRowVirtualization="True">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Person" Binding="{Binding PersonName}" Width="1.3*" IsReadOnly="True" />
+            <DataGridTextColumn Header="Entry" Binding="{Binding EntryLabel}" Width="115" IsReadOnly="True" />
+            <DataGridTextColumn Header="Field" Binding="{Binding FieldLabel}" Width="130" IsReadOnly="True" />
+            <DataGridTextColumn Header="Registry" Binding="{Binding RegistryValue, TargetNullValue=—}" Width="1.2*" IsReadOnly="True" />
+            <DataGridTextColumn Header="Flocknote snapshot" Binding="{Binding FlocknoteValue, TargetNullValue=—}" Width="1.2*" IsReadOnly="True" />
+            <DataGridTemplateColumn Header="Decision" Width="190">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <ComboBox Style="{StaticResource GridCombo}" x:Name="DecisionCombo"
+                            ItemsSource="{Binding DataContext.DecisionOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                            DisplayMemberPath="Label" SelectedValuePath="Value"
+                            SelectedValue="{Binding Decision, UpdateSourceTrigger=PropertyChanged}"
+                            IsEnabled="{Binding IsDecidable}" />
+                  <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding IsDecidable}" Value="False">
+                      <Setter TargetName="DecisionCombo" Property="Visibility" Value="Collapsed" />
+                    </DataTrigger>
+                  </DataTemplate.Triggers>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="Note" Binding="{Binding Note}" Width="1.4*" IsReadOnly="True">
+              <DataGridTextColumn.ElementStyle>
+                <Style TargetType="TextBlock">
+                  <Setter Property="TextWrapping" Value="Wrap" />
+                  <Setter Property="FontSize" Value="12" />
+                  <Setter Property="VerticalAlignment" Value="Center" />
+                </Style>
+              </DataGridTextColumn.ElementStyle>
+            </DataGridTextColumn>
+          </DataGrid.Columns>
+        </DataGrid>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+          <TextBlock Text="Set selected rows to:" VerticalAlignment="Center" Margin="0,0,10,0" />
+          <ComboBox x:Name="BulkDecision" Width="220" DisplayMemberPath="Label" SelectedValuePath="Value" />
+          <Button Content="Apply to selected" Margin="10,0,0,0" Style="{StaticResource SecondaryButton}" Click="BulkDecision_Click" />
+          <TextBlock Text="Tip: Ctrl+A selects every row in the current view." VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource MutedBrush}" FontSize="12" />
+        </StackPanel>
+      </Grid>
+
+      <!-- Step 5: apply / publish -->
+      <ScrollViewer x:Name="ApplyPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+        <StackPanel>
+          <TextBlock x:Name="ApplySummaryText" TextWrapping="Wrap" FontSize="15" />
+          <StackPanel Orientation="Horizontal" Margin="0,18,0,0">
+            <Button x:Name="ApplyButton" Content="Import into registry" Click="Apply_Click" />
+            <Button x:Name="PublishButton" Content="Save to OneDrive now" Margin="10,0,0,0" Style="{StaticResource SecondaryButton}" Visibility="Collapsed" Click="Publish_Click" />
+          </StackPanel>
+          <TextBlock x:Name="ApplyResultText" TextWrapping="Wrap" Margin="0,18,0,0" FontSize="15" />
+        </StackPanel>
+      </ScrollViewer>
+
+      <Border x:Name="BusyOverlay" Background="#CCF4EEE4" Visibility="Collapsed">
+        <TextBlock x:Name="BusyText" Text="Working…" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" />
+      </Border>
+    </Grid>
+
+    <DockPanel Grid.Row="3" Margin="0,16,0,0">
+      <Button DockPanel.Dock="Right" Content="Close" Width="100" Margin="10,0,0,0" Style="{StaticResource SecondaryButton}" Click="Close_Click" />
+      <Button x:Name="NextButton" DockPanel.Dock="Right" Content="Next" Width="100" Margin="10,0,0,0" Click="Next_Click" />
+      <Button x:Name="BackButton" DockPanel.Dock="Right" Content="Back" Width="100" Style="{StaticResource SecondaryButton}" Click="Back_Click" />
+      <TextBlock x:Name="StatusText" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" />
+    </DockPanel>
+  </Grid>
+</Window>

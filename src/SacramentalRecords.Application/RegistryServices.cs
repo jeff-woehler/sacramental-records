@@ -11,6 +11,8 @@ public interface IRegistryStore
     Task<IReadOnlyList<SacramentRecord>> GetSacramentsAsync(Guid personRecordId, CancellationToken cancellationToken);
     Task<SacramentRecord> SaveSacramentAsync(SacramentRecord record, DateTimeOffset? expectedUpdatedUtc, CancellationToken cancellationToken);
     Task DeleteSacramentAsync(Guid recordId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<SacramentRecord>> GetAllSacramentsAsync(CancellationToken cancellationToken);
+    Task SaveBatchAsync(IReadOnlyList<Person> people, IReadOnlyList<SacramentRecord> records, string summary, CancellationToken cancellationToken);
 }
 
 public sealed class RegistryService(IRegistryStore store)
@@ -48,6 +50,19 @@ public sealed class RegistryService(IRegistryStore store)
     {
         if (recordId == Guid.Empty) throw new ValidationException("An entry ID is required.");
         return store.DeleteSacramentAsync(recordId, cancellationToken);
+    }
+
+    public Task<IReadOnlyList<SacramentRecord>> GetAllSacramentsAsync(CancellationToken cancellationToken = default) =>
+        store.GetAllSacramentsAsync(cancellationToken);
+
+    /// <summary>Saves people and entries in one transaction so a bulk import is all-or-nothing.</summary>
+    public Task SaveBatchAsync(IReadOnlyList<Person> people, IReadOnlyList<SacramentRecord> records, string summary, CancellationToken cancellationToken = default)
+    {
+        if (people.Any(p => string.IsNullOrWhiteSpace(p.GivenName) || string.IsNullOrWhiteSpace(p.FamilyName)))
+            throw new ValidationException("Given name and family name are required.");
+        if (records.Any(r => r.PersonRecordId == Guid.Empty || string.IsNullOrWhiteSpace(r.SacramentType)))
+            throw new ValidationException("A person and entry type are required.");
+        return store.SaveBatchAsync(people, records, summary, cancellationToken);
     }
 }
 

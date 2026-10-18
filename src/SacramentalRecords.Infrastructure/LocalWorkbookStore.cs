@@ -97,6 +97,27 @@ public sealed class LocalWorkbookStore(LocalWorkbookOptions options) : IRegistry
     public Task<SacramentRecord> SaveSacramentAsync(SacramentRecord record, DateTimeOffset? expectedUpdatedUtc, CancellationToken cancellationToken) =>
         SaveAsync(record, expectedUpdatedUtc, cancellationToken);
 
+    public async Task<IReadOnlyList<SacramentRecord>> GetAllSacramentsAsync(CancellationToken cancellationToken)
+    {
+        await FileLock.WaitAsync(cancellationToken);
+        try
+        {
+            using var book = Open();
+            var sheet = FindSheet(book, options.SacramentsTable);
+            var headers = Headers(sheet);
+            return Rows(sheet, headers).Select(row => ToSacrament(row, headers)).ToList();
+        }
+        finally { FileLock.Release(); }
+    }
+
+    public async Task SaveBatchAsync(IReadOnlyList<Person> people, IReadOnlyList<SacramentRecord> records, string summary, CancellationToken cancellationToken)
+    {
+        foreach (var person in people) await SaveAsync(person, Expected(person.UpdatedUtc), cancellationToken);
+        foreach (var record in records) await SaveAsync(record, Expected(record.UpdatedUtc), cancellationToken);
+    }
+
+    private static DateTimeOffset? Expected(DateTimeOffset value) => value == DateTimeOffset.MinValue ? null : value;
+
     public async Task DeleteSacramentAsync(Guid recordId, CancellationToken cancellationToken)
     {
         await FileLock.WaitAsync(cancellationToken);

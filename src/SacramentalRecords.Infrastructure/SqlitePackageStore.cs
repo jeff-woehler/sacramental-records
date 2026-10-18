@@ -159,6 +159,47 @@ public sealed class SqlitePackageStore : IRegistryStore, IAsyncDisposable
     }
 
     public Task DeletePersonAsync(Guid recordId, CancellationToken cancellationToken) => DeleteAsync("People", recordId, "Deleted person and associated entries", cancellationToken);
+
+    public async Task<IReadOnlyList<SacramentRecord>> GetAllSacramentsAsync(CancellationToken cancellationToken)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            await using var connection = Open(); await using var command = connection.CreateCommand(); command.CommandText = "SELECT * FROM Sacraments ORDER BY SacramentDate";
+            var result = new List<SacramentRecord>(); await using var reader = await command.ExecuteReaderAsync(cancellationToken); while (await reader.ReadAsync(cancellationToken)) result.Add(ReadSacrament(reader)); return result;
+        }
+        finally { _gate.Release(); }
+    }
+
+    public async Task SaveBatchAsync(IReadOnlyList<Person> people, IReadOnlyList<SacramentRecord> records, string summary, CancellationToken cancellationToken)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            await using var connection = Open(); await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+            var now = DateTimeOffset.UtcNow;
+            foreach (var person in people)
+            {
+                CheckVersion(await ReadVersion(connection, transaction, "People", person.RecordId, cancellationToken), Expected(person.UpdatedUtc));
+                var churchId = person.ChurchDbId ?? await NextChurchId(connection, transaction, cancellationToken);
+                await using var command = connection.CreateCommand(); command.Transaction = transaction;
+                command.CommandText = "INSERT INTO People (RecordId,GivenName,MiddleName,FamilyName,BirthDate,ChurchDbId,BirthCity,BaptismDate,BaptismChurch,Status,PdsMemberId,FlocknoteId,UpdatedUtc,MaidenName,DeceasedDate) VALUES(@id,@given,@middle,@family,@birth,@church,@city,@baptism,@baptismChurch,@status,@pds,@flock,@updated,@maiden,@deceased) ON CONFLICT(RecordId) DO UPDATE SET GivenName=@given,MiddleName=@middle,FamilyName=@family,BirthDate=@birth,ChurchDbId=@church,BirthCity=@city,BaptismDate=@baptism,BaptismChurch=@baptismChurch,Status=@status,PdsMemberId=@pds,FlocknoteId=@flock,UpdatedUtc=@updated,MaidenName=@maiden,DeceasedDate=@deceased";
+                AddPersonParameters(command, person with { ChurchDbId = churchId, UpdatedUtc = now }); await command.ExecuteNonQueryAsync(cancellationToken);
+            }
+            foreach (var record in records)
+            {
+                CheckVersion(await ReadVersion(connection, transaction, "Sacraments", record.RecordId, cancellationToken), Expected(record.UpdatedUtc));
+                await using var command = connection.CreateCommand(); command.Transaction = transaction;
+                command.CommandText = "INSERT INTO Sacraments (RecordId,PersonRecordId,SacramentType,SacramentDate,Name,Place,Minister,FatherName,MotherName,SponsorOne,SponsorTwo,SponsorTwoIsChristianWitness,ProxyOne,ProxyTwo,Volume,Page,Item,Details,CanonicalNotations,UpdatedUtc) VALUES(@id,@person,@type,@date,@name,@place,@minister,@father,@mother,@sponsor1,@sponsor2,@witness2,@proxy1,@proxy2,@volume,@page,@item,@details,@canonical,@updated) ON CONFLICT(RecordId) DO UPDATE SET PersonRecordId=@person,SacramentType=@type,SacramentDate=@date,Name=@name,Place=@place,Minister=@minister,FatherName=@father,MotherName=@mother,SponsorOne=@sponsor1,SponsorTwo=@sponsor2,SponsorTwoIsChristianWitness=@witness2,ProxyOne=@proxy1,ProxyTwo=@proxy2,Volume=@volume,Page=@page,Item=@item,Details=@details,CanonicalNotations=@canonical,UpdatedUtc=@updated";
+                AddSacramentParameters(command, record with { UpdatedUtc = now }); await command.ExecuteNonQueryAsync(cancellationToken);
+            }
+            await AddAudit(connection, transaction, Guid.Empty, "import", summary, cancellationToken);
+            await transaction.CommitAsync(cancellationToken); HasUnpublishedChanges = true;
+        }
+        finally { _gate.Release(); }
+    }
+
+    private static DateTimeOffset? Expected(DateTimeOffset value) => value == DateTimeOffset.MinValue ? null : value;
     public Task DeleteSacramentAsync(Guid recordId, CancellationToken cancellationToken) => DeleteAsync("Sacraments", recordId, "Deleted entry", cancellationToken);
 
     private async Task DeleteAsync(string table, Guid id, string summary, CancellationToken cancellationToken)

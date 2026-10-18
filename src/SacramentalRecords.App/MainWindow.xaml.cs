@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     private const string PackageExtension = ".srdb";
     internal const string BaptismTemplateSettingKey = "SACRAMENTAL_RECORDS_BAPTISM_TEMPLATE";
     internal const string ChurchAddressSettingKey = "SACRAMENTAL_RECORDS_CHURCH_ADDRESS";
+    internal const string FlocknoteSnapshotSettingKey = "SACRAMENTAL_RECORDS_FLOCKNOTE_SACRAMENT_FILE";
     internal static readonly Dictionary<string, string?> FileSettings = LoadFileSettings();
 
     private RegistryService? _registry;
@@ -86,6 +87,15 @@ public partial class MainWindow : Window
     {
         var window = new AdministrationSettingsWindow { Owner = this };
         window.ShowDialog();
+    }
+
+    private void Flocknote_Click(object sender, RoutedEventArgs e)
+    {
+        if (_registry is null || _packageStore is null) { StatusText.Text = StatusMessages.OpenPackageFirst; return; }
+        var store = _packageStore;
+        var window = new FlocknoteExchangeWindow(_registry, store.IsReadOnly, () => store.PublishPackageAsync()) { Owner = this };
+        window.ShowDialog();
+        _ = RefreshPeopleAsync();
     }
 
             private async void EnableLocalAdmin(string path)

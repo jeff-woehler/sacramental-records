@@ -147,6 +147,7 @@ internal static partial class Program
             if (options.Lookup is not null) LoadParishSpellings(options.Lookup);
             if (options.Commit) Backup(options.Database);
             if (IsPdsExport(options.Input)) return RunPds(options);
+            if (IsFlocknoteMemberExport(options.Input)) return RunFlocknoteMembers(options);
 
             var isCsv = Path.GetExtension(options.Input).Equals(".csv", StringComparison.OrdinalIgnoreCase);
             var rows = isCsv
@@ -1189,7 +1190,7 @@ internal static partial class Program
 
     private static Options ParseArguments(string[] args)
     {
-                const string usage = "Usage: --input <legacy-sacraments.xlsm|Weddings.csv|PDS-export.csv> --database <MemberRecords.sqlite> [--lookup Lookup.xlsx] [--commit] [--report report.csv]";
+                const string usage = "Usage: --input <legacy-sacraments.xlsm|Weddings.csv|PDS-export.csv|Flocknote Member.xlsx> --database <MemberRecords.sqlite> [--lookup Lookup.xlsx] [--commit] [--report report.csv]";
 
         string? input = null, database = null, report = null, lookup = null;
         var commit = false;

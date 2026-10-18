@@ -12,6 +12,48 @@ public partial class AdministrationSettingsWindow : Window
         WindowControlHelper.RemoveMinimizeButton(this);
         ChurchAddressText.Text = MainWindow.FileSettings.GetValueOrDefault(MainWindow.ChurchAddressSettingKey) ?? string.Empty;
         RefreshTemplatePath();
+        RefreshFlocknotePath();
+    }
+
+    private void RefreshFlocknotePath()
+    {
+        var path = MainWindow.FileSettings.GetValueOrDefault(MainWindow.FlocknoteSnapshotSettingKey);
+        FlocknotePathText.Text = string.IsNullOrWhiteSpace(path) ? "Not set (staff will locate the file each time)" : path;
+    }
+
+    private void BrowseFlocknote_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Select the Flocknote Sacrament snapshot",
+            Filter = "Excel workbook (*.xlsx)|*.xlsx",
+            CheckFileExists = true
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            var missing = SacramentalRecords.Infrastructure.FlocknoteSnapshot.Load(dialog.FileName).MissingHeaders();
+            if (missing.Count > 0 && MessageBox.Show(this,
+                    $"These Flocknote columns were not found in row 1 and will be ignored:\n\n{string.Join("\n", missing.Take(15))}{(missing.Count > 15 ? "\n…" : string.Empty)}\n\nUse this file anyway?",
+                    "Columns not found", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                return;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Not a Flocknote Sacrament file", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        MainWindow.FileSettings[MainWindow.FlocknoteSnapshotSettingKey] = Path.GetFullPath(dialog.FileName);
+        MainWindow.SaveFileSettings();
+        RefreshFlocknotePath();
+    }
+
+    private void ClearFlocknote_Click(object sender, RoutedEventArgs e)
+    {
+        MainWindow.FileSettings[MainWindow.FlocknoteSnapshotSettingKey] = string.Empty;
+        MainWindow.SaveFileSettings();
+        RefreshFlocknotePath();
     }
 
     private void RefreshTemplatePath()
