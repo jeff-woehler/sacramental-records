@@ -2,5 +2,5 @@
     "version":  "1.2.3",
     "package":  "SacramentalRecords-1.2.3.zip",
     "sha256":  "314122FA718E3B52CEC45BC8D8D1F6DCF17D81F4CB40EDE48FAF00E3D7E1CA34",
-    "notes":  "Flocknote import/export is ready\n\n- Built Flocknote member linking in the import program, the Admin snapshot-file setting, the Flocknote exchange window and the Flocknote card on the person window.\n- Improved release process to generate GitHub release"
+    "notes":  "Flocknote import/export is ready\n\n- New Flocknote button: import approved sacrament details from a Flocknote Sacrament spreadsheet, or save a new update spreadsheet for Flocknote. Every difference is reviewed before anything changes; the snapshot file is never overwritten.\n- Admin > Settings: choose the Flocknote Sacrament snapshot file.\n- Person record: Compare button beside the Flocknote ID.\n- Import program: links Flocknote IDs to existing people by PDS ID.\n- Release process now creates GitHub releases."
 }

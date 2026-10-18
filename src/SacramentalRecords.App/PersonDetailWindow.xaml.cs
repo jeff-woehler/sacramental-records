@@ -7,7 +7,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using SacramentalRecords.Application;
 using SacramentalRecords.Domain;
-using SacramentalRecords.Infrastructure;
 using SacramentalRecords.App.Resources;
 
 namespace SacramentalRecords.App;
@@ -56,52 +55,15 @@ public partial class PersonDetailWindow : Window
                 .ThenByDescending(record => record.SacramentDate.HasValue)
                 .ThenByDescending(record => record.SacramentDate);
                         StatusBarText.Text = StatusMessages.PersonRecordSummary(person.RecordId, records.Count);
-            _ = LoadFlocknoteCardAsync(person, records);
+            var linked = !string.IsNullOrWhiteSpace(person.FlocknoteId);
+            FlocknoteCompareButton.IsEnabled = linked;
+            FlocknoteCompareButton.ToolTip = linked
+                ? "Compare with the Flocknote snapshot, apply selected changes, or prepare a Flocknote update"
+                : "Link this person through Flocknote Exchange on the main window";
             if (_readOnly)
                 _ = Dispatcher.BeginInvoke(DisableEditingButtons);
         }
         catch (Exception ex) { StatusBarText.Text = ex.Message; }
-    }
-
-    private async Task LoadFlocknoteCardAsync(Person person, IReadOnlyList<SacramentRecord> records)
-    {
-        var linked = !string.IsNullOrWhiteSpace(person.FlocknoteId);
-        FlocknoteCompareButton.IsEnabled = linked;
-        FlocknoteCompareButton.ToolTip = linked
-            ? "Compare with Flocknote, apply selected changes, or prepare a Flocknote update"
-            : "Link this person through Flocknote Exchange on the main window";
-        FlocknoteLinkText.Text = linked ? "Linked" : "Not linked";
-        FlocknoteCheckedText.Text = FlocknoteDiffText.Text = "—";
-
-        var path = MainWindow.FileSettings.GetValueOrDefault(MainWindow.FlocknoteSnapshotSettingKey);
-        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
-        {
-            FlocknoteSourceText.Text = "No snapshot set in Admin settings";
-            return;
-        }
-        FlocknoteSourceText.Text = $"Spreadsheet: {Path.GetFileName(path)}";
-        FlocknoteSourceText.ToolTip = path;
-        if (!linked) return;
-
-        try
-        {
-            var exchange = await Task.Run(() => FlocknoteExchange.Build(FlocknoteSnapshot.Load(path), [person], records, person.RecordId));
-            if (_person?.RecordId != person.RecordId) return;
-            FlocknoteCheckedText.Text = exchange.Snapshot.LastWriteTime.ToString("g", CultureInfo.CurrentCulture);
-            if (exchange.Linked.Count == 0)
-            {
-                FlocknoteLinkText.Text = "Needs review";
-                FlocknoteLinkText.ToolTip = $"Flocknote ID {person.FlocknoteId} is not in this snapshot.";
-                return;
-            }
-            var pending = exchange.PendingDifferences(person);
-            FlocknoteDiffText.Text = pending == 0 ? "None" : pending.ToString(CultureInfo.CurrentCulture);
-        }
-        catch (Exception ex)
-        {
-            FlocknoteSourceText.Text = "Snapshot could not be read";
-            FlocknoteSourceText.ToolTip = ex.Message;
-        }
     }
 
     private async void FlocknoteCompare_Click(object sender, RoutedEventArgs e)

@@ -48,8 +48,10 @@ $packagePath = Join-Path $ReleaseFolder $packageName
 
 $commitNotes = @()
 if (-not $IgnoreCommits) {
-    $previousTag = (git -C $repoRoot tag --sort=-version:refname | Select-Object -First 1)
+    # Don't pipe into Select-Object -First: it closes the pipe early and git exits non-zero.
+    $tags = @(git -C $repoRoot tag --sort=-version:refname)
     if ($LASTEXITCODE -ne 0) { throw "Unable to determine the previous release tag." }
+    $previousTag = $tags | Select-Object -First 1
     if ($previousTag) {
         $commitNotes = @(git -C $repoRoot log --format='- %s' "$previousTag..HEAD")
     }

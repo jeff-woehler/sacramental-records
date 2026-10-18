@@ -4,17 +4,17 @@ Sacramental Records is a Windows desktop app for parish offices. It gives staff 
 
 The app is designed for local-first use: the parish data file can live in a controlled shared folder, while each work session uses a protected local copy. This keeps everyday work responsive and helps prevent two people from editing the same file at once.
 
-## Latest release: 1.2.1
+## Latest release: 1.2.3
 
-The current release is **1.2.1**. Since 1.1.16, the project has:
+The current release is **1.2.3**. Since 1.2.1, the project has:
 
-- Published releases 1.2.0 and 1.2.1.
-- Improved certificate generation by adding a setting for the church address.
-- Completed the PDS import and added maiden-name and deceased-date fields.
-- Added the first draft of the PDS import.
-- Corrected person reconciliation for legacy sacraments.
-- Improved the lock-file mechanism to report the machine name.
-- Improved the documentation.
+- Added **Flocknote Exchange**: import approved sacrament details from a Flocknote Sacrament spreadsheet, or prepare a new update spreadsheet for Flocknote, with a step-by-step review of every difference.
+- Added a Flocknote snapshot file setting under **Admin > Settings**.
+- Added a **Compare** button beside the Flocknote ID on the person record.
+- Added Flocknote member linking to the import program, which ties Flocknote IDs to existing people by PDS ID.
+- Improved the release process to create GitHub releases.
+
+Earlier, 1.2.0 and 1.2.1 added the church-address certificate setting, the PDS import, and maiden-name and deceased-date fields.
 
 See the [full release history](docs/release-history.md), [GitHub releases](https://github.com/jeff-woehler/sacramental-records/releases), or the [latest release manifest](releases/latest.json) for the package name, checksum, and release notes.
 
@@ -26,8 +26,9 @@ See the [full release history](docs/release-history.md), [GitHub releases](https
 3. Open the person record to review details and register entries.
 4. Choose **Add**, **Change**, or **Add register entry** to maintain the record.
 5. Choose **Certificate** to create a baptismal certificate when Microsoft Word is installed.
-6. Choose **Save** on the main window to publish your changes to the shared package.
-7. Publish before closing if you have made changes since the last publish.
+6. Choose **Flocknote** to import sacrament details from a Flocknote spreadsheet or prepare an update file for Flocknote.
+7. Choose **Save** on the main window to publish your changes to the shared package.
+8. Publish before closing if you have made changes since the last publish.
 
 Use the [user guide](docs/user-guide.md) for the complete daily workflow and keyboard shortcuts.
 
@@ -43,9 +44,9 @@ Administrators can read [data management and recovery guidance](docs/administrat
 
 ## Documentation
 
-- [User guide](docs/user-guide.md) — installation, searching, editing, certificates, publishing, and shortcuts.
-- [Administration](docs/administration.md) — permissions, package management, backups, updates, and recovery.
-- [Import guide](docs/import-guide.md) — dry-run and commit procedures for legacy workbooks and wedding CSV files.
+- [User guide](docs/user-guide.md) — installation, searching, editing, certificates, Flocknote exchange, publishing, and shortcuts.
+- [Administration](docs/administration.md) — permissions, package management, backups, updates, Flocknote snapshots, and recovery.
+- [Import guide](docs/import-guide.md) — dry-run and commit procedures for legacy workbooks, wedding CSV files, PDS exports, and Flocknote member linking.
 - [Technical reference](docs/technical-reference.md) — architecture, storage, concurrency, and release details.
 - [Release history](docs/release-history.md) — historical change notes.
 

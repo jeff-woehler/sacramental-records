@@ -10,6 +10,7 @@ The package and update-manifest settings are stored in `SacramentalRecords.setti
 - `SACRAMENTAL_RECORDS_UPDATE_MANIFEST` — URL of the release manifest used for update checks.
 - `SACRAMENTAL_RECORDS_BAPTISM_TEMPLATE` — optional path to a custom Word template.
 - `SACRAMENTAL_RECORDS_CHURCH_ADDRESS` — church address inserted into baptism certificate Word templates.
+- `SACRAMENTAL_RECORDS_FLOCKNOTE_SACRAMENT_FILE` — optional path to the Flocknote Sacrament snapshot (`.xlsx`) used by Flocknote Exchange.
 
 A legacy `.dbpackage` setting is migrated to the matching `.srdb` filename on startup when it is safe to do so. The application does not overwrite an existing `.srdb` file.
 
@@ -37,6 +38,14 @@ The release package contains application files only; parish data is intentionall
 ## Certificate templates
 
 Use **Admin > Settings** to enter the church address and to download, select, clear, or open the Word baptism certificate template. To place the address in a template, add a Word `DOCPROPERTY` field for `Cert.ChurchAddress`. Test a certificate after changing a template. Word must be installed and configured on the workstation; template or Word errors do not alter the registry data.
+
+## Flocknote
+
+Use **Admin > Settings > Flocknote** to choose or clear the Flocknote Sacrament snapshot. Columns are located by the Flocknote header names in row 1, so column order does not matter; the application warns when expected headers are missing. When no file is set, staff locate the file each time they use Flocknote Exchange.
+
+The standard Flocknote member export includes only sacrament dates and certificate flags. Celebrant, register book/page/entry, sponsors, location, and notes are available only in the sacrament export that Flocknote support produces. Request a new snapshot before each exchange, store it in a protected folder, and replace the file rather than editing it. Update files created by the application are new spreadsheets with the same headers; send them to Flocknote support for loading.
+
+Before the first exchange, link existing people to Flocknote with the member import described in the [import guide](import-guide.md#link-flocknote-members).
 
 ## Data-handling rules
 

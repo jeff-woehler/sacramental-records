@@ -14,6 +14,22 @@ An `.srdb` file is a ZIP archive intended to contain exactly one entry: `MemberR
 
 Baptism data in a baptism sacrament is authoritative. Person-level baptism fields are reserved for baptism performed elsewhere and transmitted to the home parish. Record identity must never depend on row position.
 
+## Flocknote exchange
+
+`FlocknoteExchange` (Infrastructure) reads a Flocknote Sacrament spreadsheet with a streaming OpenXML reader, locating columns by row-1 header text. Rows are keyed by `flocknoteID` and matched to `People.FlocknoteId`; the sheet's `memberID` is a Flocknote-internal number, not a PDS ID. No schema is added; snapshot data is not stored. Field mapping per sacrament prefix (`Baptism`, `First Communion`, `Confirmation`, `Marriage`, `Holy Orders`):
+
+| Flocknote header | Registry column |
+|---|---|
+| `<Prefix> Date` | `SacramentDate` |
+| `<Prefix> Location` | `Place` |
+| `<Prefix> Celebrant` | `Minister` |
+| `<Prefix> Record Book` / `Record Book Page` / `Record Book Entry` | `Volume` / `Page` / `Item` |
+| `<Prefix> Notes` | `Details` |
+| `Godparents`, `Confirmation Sponsor`, `Marriage Witnesses` (pipe-separated) | `SponsorOne` / `SponsorTwo` |
+| `Confirmation Name`, `Marriage Spouse` | `Name` |
+
+First Reconciliation and Death Register columns are not mapped. Placeholder values such as `NOT NOTED` are treated as blank, and comparisons tolerate case, punctuation, titles, and word subsets. Imports are applied by `RegistryService.SaveBatchAsync` in a single transaction with one audit event, using `UpdatedUtc` stale-record checks. Update files are written as new workbooks with the snapshot's header row; writing to the snapshot path is refused.
+
 ## Reliability and concurrency
 
 Writes use SQLite transactions and are serialized by a per-session semaphore. Save operations compare `UpdatedUtc` with the editor’s loaded value to reject stale writes. Publish creates and verifies a temporary ZIP in the package directory, makes a timestamped backup, and replaces the selected package. A publish failure leaves the local session intact. Closing warns about unpublished work rather than silently publishing it.

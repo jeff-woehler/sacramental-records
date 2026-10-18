@@ -29,6 +29,7 @@
             <StackPanel Margin="0,0,18,0"><TextBlock Text="CHURCH DB" Style="{StaticResource CardLabel}"/><TextBox x:Name="ChurchDbText" FontSize="14" IsReadOnly="True" IsTabStop="False" BorderThickness="0" Background="Transparent" Padding="0" VerticalContentAlignment="Center"/></StackPanel>
             <StackPanel Margin="0,0,18,0"><TextBlock Text="PDS" Style="{StaticResource CardLabel}"/><TextBox x:Name="PdsText" FontSize="14" IsReadOnly="True" IsTabStop="False" BorderThickness="0" Background="Transparent" Padding="0" VerticalContentAlignment="Center"/></StackPanel>
             <StackPanel><TextBlock Text="FLOCKNOTE" Style="{StaticResource CardLabel}"/><TextBox x:Name="FlocknoteText" FontSize="14" IsReadOnly="True" IsTabStop="False" BorderThickness="0" Background="Transparent" Padding="0" VerticalContentAlignment="Center"/></StackPanel>
+            <Button x:Name="FlocknoteCompareButton" Content="Compare" Margin="10,0,0,0" Padding="10,4" MinHeight="30" FontSize="12" Style="{StaticResource SecondaryButton}" VerticalAlignment="Center" IsEnabled="False" Click="FlocknoteCompare_Click"/>
           </StackPanel>
         </Border>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
@@ -42,23 +43,12 @@
     <GroupBox Grid.Row="1" Margin="0,0,0,4" Header="Person and baptism details">
       <Grid Margin="4,2">
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,8,12,0"><TextBlock Text="MAIDEN NAME" Style="{StaticResource CardLabel}"/><TextBlock x:Name="MaidenNameText" FontSize="15" TextWrapping="Wrap"/></StackPanel>
         <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,8,12,0"><TextBlock Text="DECEASED" Style="{StaticResource CardLabel}"/><TextBlock x:Name="DeceasedText" FontSize="15" TextWrapping="Wrap"/></StackPanel>
         <StackPanel Grid.Column="0" Margin="0,0,12,0"><TextBlock Text="BIRTH DATE" Foreground="{StaticResource MutedBrush}" FontSize="12" FontWeight="Bold"/><TextBlock x:Name="BirthText" FontSize="16" Margin="0,2,0,0"/></StackPanel>
         <StackPanel Grid.Column="1" Margin="0,0,12,0"><TextBlock Text="BIRTH CITY" Style="{StaticResource CardLabel}"/><TextBlock x:Name="BirthCityText" FontSize="15" TextWrapping="Wrap"/></StackPanel>
         <StackPanel Grid.Column="2"><TextBlock Text="BAPTISM DATE" Style="{StaticResource CardLabel}"/><TextBlock x:Name="BaptismDateText" FontSize="15" TextWrapping="Wrap"/></StackPanel>
-        <Border Grid.Row="2" Grid.ColumnSpan="3" Margin="0,10,0,0" Background="{StaticResource SurfaceMutedBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="8" Padding="10,6">
-          <Grid>
-            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="1.6*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <TextBlock Text="FLOCKNOTE SNAPSHOT" Foreground="{StaticResource AccentBrush}" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,18,0" ToolTip="From the Flocknote spreadsheet snapshot, not live Flocknote data"/>
-            <StackPanel Grid.Column="1" Margin="0,0,12,0"><TextBlock Text="LINK" Style="{StaticResource CardLabel}"/><TextBlock x:Name="FlocknoteLinkText" Text="—" TextWrapping="Wrap"/></StackPanel>
-            <StackPanel Grid.Column="2" Margin="0,0,12,0"><TextBlock Text="LAST CHECKED" Style="{StaticResource CardLabel}"/><TextBlock x:Name="FlocknoteCheckedText" Text="—" TextWrapping="Wrap"/></StackPanel>
-            <StackPanel Grid.Column="3" Margin="0,0,12,0"><TextBlock Text="SOURCE" Style="{StaticResource CardLabel}"/><TextBlock x:Name="FlocknoteSourceText" Text="—" TextTrimming="CharacterEllipsis"/></StackPanel>
-            <StackPanel Grid.Column="4" Margin="0,0,12,0"><TextBlock Text="PENDING DIFFERENCES" Style="{StaticResource CardLabel}"/><TextBlock x:Name="FlocknoteDiffText" Text="—"/></StackPanel>
-            <Button x:Name="FlocknoteCompareButton" Grid.Column="5" Content="Compare" Padding="12,4" MinHeight="32" Style="{StaticResource SecondaryButton}" VerticalAlignment="Center" IsEnabled="False" Click="FlocknoteCompare_Click" ToolTip="Compare with Flocknote, apply selected changes, or prepare a Flocknote update"/>
-          </Grid>
-        </Border>
       </Grid>
     </GroupBox>
     <GroupBox Grid.Row="2" Margin="0,8,0,0" Header="Register Entries">

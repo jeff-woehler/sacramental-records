@@ -25,6 +25,22 @@ Use **Register Entries** to add or edit baptism, confirmation, first communion, 
 
 Open a person with a baptism record and choose **Certificate**. Word evaluates the included template and exports the certificate as a PDF. If the parish uses a customized template, an administrator can select it through **Admin > Settings**. Certificate generation does not change the parish database.
 
+## Exchange with Flocknote
+
+Flocknote data is exchanged through spreadsheets; there is no live connection. Flocknote support provides a **Flocknote Sacrament** spreadsheet (a snapshot of Flocknote at the time it was exported). The registry is the record of authority for sacramental data.
+
+Choose **Flocknote** on the main window and follow the steps:
+
+1. **Choose file** — pick **Import from Flocknote** or **Prepare updates for Flocknote**. The snapshot set in **Admin > Settings** is used; if none is set, choose **Locate file**.
+2. **Confirm scope** — for an import, choose linked people only or all snapshot rows. For an update file, choose only people with values to send or all linked people.
+3. **Match people** (import of all rows only) — for each Flocknote row not yet linked, confirm a suggested registry person, add a new person (status Active member), or skip. Rows where two Flocknote profiles match one person, or the name matches someone already linked, default to **Skip for now** because they are likely duplicate Flocknote profiles.
+4. **Review changes** — differences are grouped (no changes, proposed changes, new people, possible matches and duplicates, linked people missing from the snapshot, invalid rows). For each difference choose **Keep registry value**, **Use Flocknote value**, **Leave unchanged**, or **Review later**. Select several rows (Ctrl+A selects all in the current view) and use **Set selected rows to** to decide in bulk.
+5. **Apply / publish** — an import writes all approved changes in one step and then offers **Save to OneDrive now**. An update file is always saved as a new spreadsheet you name; the snapshot file is never overwritten. Send the update file to Flocknote support.
+
+By default, values missing on one side are filled from the other, and conflicting values keep the registry value. Registry notes are never sent to Flocknote unless chosen row by row, because they can contain confidential remarks and Flocknote shows sacrament details to the member.
+
+On a person record, **Compare** beside the Flocknote ID opens the same steps for that person only. It is available when the person is linked to Flocknote; link people through the main **Flocknote** window.
+
 ## Publish and close
 
 Choose **Save** on the main window to publish the local session to the selected package. Publishing creates a verified package and retains a backup of the previous package. Continue working after a successful publish if needed.

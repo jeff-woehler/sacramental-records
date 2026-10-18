@@ -457,15 +457,6 @@ public sealed class FlocknoteExchange
         return review;
     }
 
-    /// <summary>Counts differences for one linked person (used by the person card).</summary>
-    public int PendingDifferences(Person person)
-    {
-        var row = Linked.FirstOrDefault(l => l.Person.RecordId == person.RecordId).Row;
-        if (row is null) return 0;
-        var sink = new List<FlocknoteFieldChange>();
-        return Compare(person, row, FlocknoteGroup.ProposedChanges, FlocknoteDirection.Import, sink);
-    }
-
     public FlocknoteImportBatch BuildImport(IReadOnlyList<FlocknoteFieldChange> review, bool includeUnlinked)
     {
         var people = new Dictionary<Guid, Person>();
