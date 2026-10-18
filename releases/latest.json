@@ -1,6 +1,6 @@
 {
-    "version":  "1.2.0",
-    "package":  "SacramentalRecords-1.2.0.zip",
-    "sha256":  "A4DAE590204AA805D3B870D6D233E48E4114522C837276851568F78E31E07859",
-    "notes":  ""
+    "version":  "1.2.1",
+    "package":  "SacramentalRecords-1.2.1.zip",
+    "sha256":  "1728ED6CA9519B3F21951303EDACE5AADA379632680A838B3CCD84D982FFD7DB",
+    "notes":  "General availability\n\n- Release 1.2.0\n- improved certificate generation by adding a setting for church address.\n- Completed PDS import and added Maiden name and Deceased date fields.\n- PDS import - first draft\n- Corrections to person reconciliation for legacy sacraments\n- Improved the lock file mechanism to report machine name\n- Improved the documentation\n- Release 1.1.16\n- Release 1.1.15\n- Corrected file management during locking, added cert template options, improved legacy import to include marriages.\n- Updated sacrament record verbiage to registry entry. added two entry types: religious profession and diaconate. updated legacy importer to read weddings.\n- Fix update manifest: strip UTF-8 BOM that broke JSON parsing, write BOM-less going forward\n- Release 1.0.9\n- Sync AssemblyVersion 1.0.8 and update-check DEBUG gate to repo\n- Release 1.0.8\n- Release 1.0.7\n- Switch update location to in-repo releases/ folder\n- Add MIT LICENSE\n- Initial public release"
 }
