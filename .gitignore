@@ -7,6 +7,8 @@
 *.suo
 **/desktop.ini
 
+/scripts/token.txt
+
 # Parish data and local files must never be committed
 sample-data/
 snips/

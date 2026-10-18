@@ -4,11 +4,20 @@ Sacramental Records is a Windows desktop app for parish offices. It gives staff 
 
 The app is designed for local-first use: the parish data file can live in a controlled shared folder, while each work session uses a protected local copy. This keeps everyday work responsive and helps prevent two people from editing the same file at once.
 
-## Latest release: 1.1.16
+## Latest release: 1.2.1
 
-The current release is **1.1.16**. It adds **Religious Profession** and **Diaconate** register entry types, improves file management and error handling, and changes the data-package extension to `.srdb`.
+The current release is **1.2.1**. Since 1.1.16, the project has:
 
-See the [full release history](docs/release-history.md) or the [latest release manifest](releases/latest.json) for the package name, checksum, and release notes.
+- Published releases 1.2.0 and 1.2.1.
+- Improved certificate generation by adding a setting for the church address.
+- Completed the PDS import and added maiden-name and deceased-date fields.
+- Added the first draft of the PDS import.
+- Corrected person reconciliation for legacy sacraments.
+- Improved the lock-file mechanism to report the machine name.
+- Improved the documentation.
+
+See the [full release history](docs/release-history.md), [GitHub releases](https://github.com/jeff-woehler/sacramental-records/releases), or the [latest release manifest](releases/latest.json) for the package name, checksum, and release notes.
+
 
 ## Everyday use
 

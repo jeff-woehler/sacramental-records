@@ -1,11 +1,9 @@
 # Release history
 
-## 1.1.16 — current
+Release notes are maintained by the GitHub Release created by
+[`scripts/Publish-Release.ps1`](../scripts/Publish-Release.ps1). The script combines
+optional `-Notes` text with Git commit subjects since the previous release tag;
+pass `-IgnoreCommits` when only the explicit notes should be used.
 
-Published package: `SacramentalRecords-1.1.16.zip`
-
-- Added registry entry types for **Religious Profession** and **Diaconate**.
-- Improved file management and error handling.
-- Changed the application data-package filename extension to `.srdb`.
-
-See [`releases/latest.json`](../releases/latest.json) for the current package name, SHA-256 hash, and release notes. Future release notes should be added here when a version is published, with the newest release first.
+- [View releases on GitHub](https://github.com/jeff-woehler/sacramental-records/releases)
+- [Current update manifest](../releases/latest.json) — package name, SHA-256 hash, and notes used by the updater
