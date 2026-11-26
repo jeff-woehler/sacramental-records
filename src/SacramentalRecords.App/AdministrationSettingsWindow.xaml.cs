@@ -11,8 +11,36 @@ public partial class AdministrationSettingsWindow : Window
         InitializeComponent();
         WindowControlHelper.RemoveMinimizeButton(this);
         ChurchAddressText.Text = MainWindow.FileSettings.GetValueOrDefault(MainWindow.ChurchAddressSettingKey) ?? string.Empty;
+        RefreshSpacingControls();
         RefreshTemplatePath();
         RefreshFlocknotePath();
+    }
+
+    private void DecreaseSpacing_Click(object sender, RoutedEventArgs e)
+    {
+        UiSpacing.SetLevel(UiSpacing.Level - 1);
+        SaveSpacingSetting();
+        RefreshSpacingControls();
+    }
+
+    private void IncreaseSpacing_Click(object sender, RoutedEventArgs e)
+    {
+        UiSpacing.SetLevel(UiSpacing.Level + 1);
+        SaveSpacingSetting();
+        RefreshSpacingControls();
+    }
+
+    private void RefreshSpacingControls()
+    {
+        SpacingText.Text = UiSpacing.Label;
+        DecreaseSpacingButton.IsEnabled = UiSpacing.CanDecrease;
+        IncreaseSpacingButton.IsEnabled = UiSpacing.CanIncrease;
+    }
+
+    private static void SaveSpacingSetting()
+    {
+        MainWindow.FileSettings[MainWindow.SpacingSettingKey] = UiSpacing.Level.ToString();
+        MainWindow.SaveFileSettings();
     }
 
     private void RefreshFlocknotePath()

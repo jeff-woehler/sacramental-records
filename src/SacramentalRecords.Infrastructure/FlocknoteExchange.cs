@@ -409,13 +409,15 @@ public sealed class FlocknoteExchange
     public static FlocknoteExchange Build(FlocknoteSnapshot snapshot, IReadOnlyList<Person> people, IReadOnlyList<SacramentRecord> sacraments, Guid? onlyPerson = null) =>
         new(snapshot, people, sacraments, onlyPerson);
 
-    /// <summary>Builds the review list. Unlinked rows are included according to the decisions made on the Match step.</summary>
-    public List<FlocknoteFieldChange> BuildReview(FlocknoteDirection direction, bool includeUnlinked)
+        /// <summary>Builds the review list for the selected registry people. Unlinked rows are included according to the decisions made on the Match step.</summary>
+    public List<FlocknoteFieldChange> BuildReview(FlocknoteDirection direction, bool includeUnlinked, ISet<Guid>? selectedPeople = null)
     {
+        bool IsSelected(Person person) => selectedPeople is null || selectedPeople.Contains(person.RecordId);
         var review = new List<FlocknoteFieldChange>(Invalid);
-        foreach (var (person, row) in Linked)
+        foreach (var (person, row) in Linked.Where(link => IsSelected(link.Person)))
         {
             var changes = Compare(person, row, FlocknoteGroup.ProposedChanges, direction, review);
+
             if (changes == 0) review.Add(Info(FlocknoteGroup.NoChanges, Describe(person), row, person.RecordId, "Registry and Flocknote agree."));
         }
 
@@ -430,9 +432,13 @@ public sealed class FlocknoteExchange
                     : "Not linked; outside the selected scope."));
                 continue;
             }
-            switch (match.Selected.Action)
+                        switch (match.Selected.Action)
             {
+                case FlocknoteMatchAction.Link when match.Selected.Person is { } candidate && !IsSelected(candidate):
+                    review.Add(Info(group, match.Row.Name, match.Row, null, $"{Describe(candidate)} is outside the selected people."));
+                    break;
                 case FlocknoteMatchAction.Link when match.Selected.Person is { } candidate && !linkedThisReview.Add(candidate.RecordId):
+
                     review.Add(Info(group, match.Row.Name, match.Row, null, $"{Describe(candidate)} is already chosen for another Flocknote row; this row will be skipped."));
                     break;
                 case FlocknoteMatchAction.Link when match.Selected.Person is { } candidate:
@@ -440,35 +446,43 @@ public sealed class FlocknoteExchange
                     review.Add(Info(group, Describe(candidate), match.Row, candidate.RecordId,
                         $"Will be linked to Flocknote ID {match.Row.FlocknoteId}{(count == 0 ? "; no other differences." : ".")}"));
                     break;
+                                case FlocknoteMatchAction.CreatePerson when selectedPeople is not null:
+                    review.Add(Info(group, match.Row.Name, match.Row, null, "New people are outside the selected registry people."));
+                    break;
                 case FlocknoteMatchAction.CreatePerson:
                     match.NewPerson ??= NewPerson(match.Row);
                     Compare(match.NewPerson, match.Row, group, direction, review);
                     review.Add(Info(group, match.Row.Name, match.Row, match.NewPerson.RecordId, "Will be added to the registry as an active member."));
                     break;
+
                 default:
                     review.Add(Info(group, match.Row.Name, match.Row, null, "Skipped on the Match step; nothing will be imported."));
                     break;
             }
         }
 
-        foreach (var person in Missing)
+                foreach (var person in Missing.Where(IsSelected))
+
             review.Add(Info(FlocknoteGroup.MissingFromSnapshot, Describe(person), null, person.RecordId,
                 $"Linked to Flocknote ID {person.FlocknoteId}, which is not in this snapshot."));
         return review;
     }
 
-    public FlocknoteImportBatch BuildImport(IReadOnlyList<FlocknoteFieldChange> review, bool includeUnlinked)
+        public FlocknoteImportBatch BuildImport(IReadOnlyList<FlocknoteFieldChange> review, bool includeUnlinked, ISet<Guid>? selectedPeople = null)
     {
         var people = new Dictionary<Guid, Person>();
         int linked = 0, created = 0, applied = 0;
         foreach (var match in includeUnlinked ? Matches : [])
         {
-            if (match.Selected.Action == FlocknoteMatchAction.Link && match.Selected.Person is { } person && !people.ContainsKey(person.RecordId))
+            if (match.Selected.Action == FlocknoteMatchAction.Link && match.Selected.Person is { } person &&
+                (selectedPeople is null || selectedPeople.Contains(person.RecordId)) && !people.ContainsKey(person.RecordId))
+
             {
                 people[person.RecordId] = person with { FlocknoteId = match.Row.FlocknoteId };
                 linked++;
             }
-            else if (match.Selected.Action == FlocknoteMatchAction.CreatePerson && match.NewPerson is { } newPerson)
+                        else if (selectedPeople is null && match.Selected.Action == FlocknoteMatchAction.CreatePerson && match.NewPerson is { } newPerson)
+
             {
                 people[newPerson.RecordId] = newPerson;
                 created++;
@@ -499,7 +513,10 @@ public sealed class FlocknoteExchange
 
         var outbound = review.Where(c => c.Decision == FlocknoteDecision.KeepRegistry && c.Header is not null && c.RegistryValue is not null && c.Kind != FlocknoteChangeKind.Information && c.Row is not null)
             .GroupBy(c => c.Row!).ToDictionary(g => g.Key, g => g.ToList());
-        var rows = allLinkedPeople ? Linked.Select(l => l.Row).ToList() : Linked.Select(l => l.Row).Where(outbound.ContainsKey).ToList();
+                var selectedRows = review.Where(change => change.PersonId is not null && change.Row is not null)
+            .Select(change => change.Row!).Distinct().ToList();
+        var rows = allLinkedPeople ? selectedRows : selectedRows.Where(outbound.ContainsKey).ToList();
+
 
         using var book = new XLWorkbook();
         var sheet = book.Worksheets.Add("Sheet1");

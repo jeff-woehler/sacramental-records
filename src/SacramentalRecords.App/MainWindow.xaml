@@ -4,10 +4,20 @@
         xmlns:app="clr-namespace:SacramentalRecords.App"
         Title="Sacramental Records" Icon="/assets/sr.ico" Height="680" Width="1100" MinHeight="520" MinWidth="850"
         PreviewKeyDown="Window_PreviewKeyDown">
-  <Window.Resources>
+    <Window.Resources>
     <app:StatusDisplayConverter x:Key="StatusDisplayConverter" />
+    <Thickness x:Key="ContentMargin">32</Thickness>
+    <Thickness x:Key="HeaderMargin">0,0,0,22</Thickness>
+    <Thickness x:Key="SearchPanelPadding">18</Thickness>
+    <Thickness x:Key="SearchPanelMargin">0,0,0,18</Thickness>
+    <Thickness x:Key="RecordsPadding">18</Thickness>
+    <Thickness x:Key="RecordsHeaderPadding">12,0,29,8</Thickness>
+    <Thickness x:Key="RecordsHeaderMargin">0,0,0,8</Thickness>
+    <Thickness x:Key="RecordMargin">0,0,0,6</Thickness>
+    <Thickness x:Key="RecordPadding">10,7</Thickness>
+    <Thickness x:Key="FooterMargin">0,16,0,0</Thickness>
   </Window.Resources>
-  <Grid Margin="32">
+  <Grid Margin="{DynamicResource ContentMargin}">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
@@ -15,7 +25,7 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <Grid Grid.Row="0" Margin="0,0,0,22">
+    <Grid Grid.Row="0" Margin="{DynamicResource HeaderMargin}">
       <StackPanel>
         <TextBlock Text="PARISH REGISTRY" Foreground="{StaticResource AccentBrush}" FontSize="13" FontWeight="Bold" />
         <TextBlock Text="Sacramental Records" Style="{StaticResource DisplayText}" FontSize="38" FontWeight="Bold" Margin="0,5,0,2" />
@@ -37,7 +47,7 @@
       </Border>
     </Grid>
 
-    <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="18" Padding="18" Margin="0,0,0,18">
+    <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="18" Padding="{DynamicResource SearchPanelPadding}" Margin="{DynamicResource SearchPanelMargin}">
       <Grid>
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
@@ -53,12 +63,12 @@
     </Border>
 
     <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="18" Padding="0">
-      <Grid Margin="18">
+      <Grid Margin="{DynamicResource RecordsPadding}">
         <Grid.RowDefinitions>
           <RowDefinition Height="Auto" />
           <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <Border Grid.Row="0" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" Padding="12,0,29,8" Margin="0,0,0,8">
+        <Border Grid.Row="0" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" Padding="{DynamicResource RecordsHeaderPadding}" Margin="{DynamicResource RecordsHeaderMargin}">
           <Grid>
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="1.35*" />
@@ -86,7 +96,7 @@
             <Style TargetType="ListBoxItem">
               <Setter Property="HorizontalContentAlignment" Value="Stretch" />
               <Setter Property="Padding" Value="0" />
-              <Setter Property="Margin" Value="0,0,0,6" />
+              <Setter Property="Margin" Value="{DynamicResource RecordMargin}" />
               <Setter Property="Template">
                 <Setter.Value>
                   <ControlTemplate TargetType="ListBoxItem">
@@ -95,7 +105,7 @@
                             BorderBrush="{StaticResource LineBrush}"
                             BorderThickness="1"
                             CornerRadius="8"
-                            Padding="10,7">
+                            Padding="{DynamicResource RecordPadding}">
                       <ContentPresenter />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -132,8 +142,8 @@
       </Grid>
     </Border>
 
-    <Grid Grid.Row="3" Margin="0,16,0,0">
-      <Grid.ColumnDefinitions>
+        <Grid Grid.Row="3" Margin="{DynamicResource FooterMargin}">
+            <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
@@ -143,11 +153,12 @@
                  IsReadOnly="True"
                  IsTabStop="False"
                  BorderThickness="0"
-                 Background="Transparent"
+                                  Background="Transparent"
                  Padding="0"
+                 MinHeight="0"
                  VerticalContentAlignment="Center" />
       </StatusBar>
-      <Border Grid.Column="1" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="5" Padding="8,3" Margin="12,0,0,0" VerticalAlignment="Center">
+                  <Border Grid.Column="1" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="5" Padding="8,3" Margin="12,0,0,0" VerticalAlignment="Center">
         <TextBlock x:Name="VersionText" Foreground="{StaticResource MutedBrush}" FontSize="11" />
       </Border>
     </Grid>

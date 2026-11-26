@@ -19,7 +19,8 @@ public partial class MainWindow : Window
     private const string PackageExtension = ".srdb";
     internal const string BaptismTemplateSettingKey = "SACRAMENTAL_RECORDS_BAPTISM_TEMPLATE";
     internal const string ChurchAddressSettingKey = "SACRAMENTAL_RECORDS_CHURCH_ADDRESS";
-    internal const string FlocknoteSnapshotSettingKey = "SACRAMENTAL_RECORDS_FLOCKNOTE_SACRAMENT_FILE";
+        internal const string FlocknoteSnapshotSettingKey = "SACRAMENTAL_RECORDS_FLOCKNOTE_SACRAMENT_FILE";
+    internal const string SpacingSettingKey = "SACRAMENTAL_RECORDS_SPACING";
     internal static readonly Dictionary<string, string?> FileSettings = LoadFileSettings();
 
     private RegistryService? _registry;
@@ -30,13 +31,15 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        VersionText.Text = $"v{App.Version}";
+                VersionText.Text = $"v{App.Version}";
         StatusText.Text = StatusMessages.OpenPackageToBegin;
         Closing += MainWindow_Closing;
 
                 var configuredPath = FileSettings.GetValueOrDefault(PackageSettingKey);
         if (!string.IsNullOrWhiteSpace(configuredPath)) EnableLocalAdmin(configuredPath);
     }
+
+    
 
     private static Dictionary<string, string?> LoadFileSettings()
     {

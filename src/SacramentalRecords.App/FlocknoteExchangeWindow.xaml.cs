@@ -14,6 +14,8 @@ public partial class FlocknoteExchangeWindow : Window
     private enum Step { Choose, Scope, Match, Review, Apply }
 
     private sealed record GroupOption(FlocknoteGroup? Group, string Label);
+    private sealed record ScopePerson(Person Person, string DisplayName);
+
 
     private readonly RegistryService _registry;
     private readonly bool _readOnly;
@@ -24,8 +26,12 @@ public partial class FlocknoteExchangeWindow : Window
     private FlocknoteExchange? _exchange;
     private IReadOnlyList<Person>? _people;
     private IReadOnlyList<SacramentRecord>? _sacraments;
-    private List<FlocknoteFieldChange> _review = [];
+        private List<FlocknoteFieldChange> _review = [];
+        private readonly HashSet<Guid> _selectedPeople = [];
+    private bool _updatingScopePeople;
     private bool _applied;
+
+
     private bool _bulk;
 
     public IReadOnlyList<FlocknoteOption<FlocknoteDecision>> DecisionOptions => FlocknoteMaps.Decisions;
@@ -104,8 +110,14 @@ public partial class FlocknoteExchangeWindow : Window
 
     private async void Next_Click(object sender, RoutedEventArgs e)
     {
-        if (_step == Step.Choose && !await LoadAsync()) return;
+                if (_step == Step.Choose && !await LoadAsync()) return;
+        if (_step == Step.Scope && _selectedPeople.Count == 0)
+        {
+            MessageBox.Show(this, "Select at least one person to continue.", "People required", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
         var steps = Steps().ToList();
+
         var index = steps.IndexOf(_step);
         if (index < steps.Count - 1) ShowStep(steps[index + 1]);
     }
@@ -144,10 +156,11 @@ public partial class FlocknoteExchangeWindow : Window
             StatusText.Text = missing.Count == 0
                 ? $"{snapshot.Rows.Count:N0} rows read."
                 : $"{snapshot.Rows.Count:N0} rows read. Columns not found (ignored): {string.Join(", ", missing)}";
-            ScopeSummaryText.Text =
+                        ScopeSummaryText.Text =
                 $"The snapshot has {snapshot.Rows.Count:N0} rows: {_exchange.Linked.Count:N0} linked to registry people, " +
                 $"{_exchange.Matches.Count(m => m.HasCandidates):N0} unlinked with a possible match, {_exchange.Matches.Count(m => !m.HasCandidates):N0} unlinked with no match, " +
-                $"and {_exchange.Invalid.Count:N0} invalid or incomplete. {_exchange.Missing.Count:N0} linked registry people are not in this snapshot.";
+                $"and {_exchange.Invalid.Count:N0} invalid or incomplete. Search and select the registry people to include.";
+            PopulateScopePeople();
             return true;
         }
         catch (Exception ex)
@@ -185,7 +198,61 @@ public partial class FlocknoteExchangeWindow : Window
         if (step == Step.Apply) ShowApply();
     }
 
+        private void PopulateScopePeople() => UpdateScopePeople();
+
+        private void ScopeSearch_TextChanged(object sender, TextChangedEventArgs e) => UpdateScopePeople();
+
+        private void UpdateScopePeople()
+        {
+            if (_people is null) return;
+
+        var search = ScopeSearchBox.Text.Trim();
+        var shown = _people
+            .Where(person => string.IsNullOrEmpty(search) || $"{person.GivenName} {person.MiddleName} {person.FamilyName} {person.MaidenName} {person.FlocknoteId}"
+                .Contains(search, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(person => person.FamilyName)
+            .ThenBy(person => person.GivenName)
+            .Select(person => new ScopePerson(person, $"{FlocknoteExchange.Describe(person)}{(string.IsNullOrWhiteSpace(person.FlocknoteId) ? "" : $" — Flocknote ID {person.FlocknoteId}")}"))
+            .ToList();
+                _updatingScopePeople = true;
+        try
+        {
+            ScopePeopleList.ItemsSource = shown;
+            foreach (var person in shown.Where(p => _selectedPeople.Contains(p.Person.RecordId))) ScopePeopleList.SelectedItems.Add(person);
+        }
+        finally { _updatingScopePeople = false; }
+        UpdateSelectedPeopleText();
+    }
+
+    private void ScopePeople_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingScopePeople) return;
+        foreach (var person in e.RemovedItems.OfType<ScopePerson>()) _selectedPeople.Remove(person.Person.RecordId);
+
+        foreach (var person in e.AddedItems.OfType<ScopePerson>()) _selectedPeople.Add(person.Person.RecordId);
+        UpdateSelectedPeopleText();
+    }
+
+    private void SelectShownPeople_Click(object sender, RoutedEventArgs e)
+    {
+        foreach (var person in ScopePeopleList.Items.OfType<ScopePerson>()) _selectedPeople.Add(person.Person.RecordId);
+                UpdateScopePeople();
+
+    }
+
+    private void ClearSelectedPeople_Click(object sender, RoutedEventArgs e)
+    {
+        _selectedPeople.Clear();
+        ScopePeopleList.SelectedItems.Clear();
+        UpdateSelectedPeopleText();
+    }
+
+    private void UpdateSelectedPeopleText() => SelectedPeopleText.Text = _selectedPeople.Count == 0
+        ? "No people selected."
+        : $"{_selectedPeople.Count:N0} person{(_selectedPeople.Count == 1 ? string.Empty : "s")} selected.";
+
     private void ShowMatches()
+
     {
         var matches = _exchange!.Matches;
         MatchSummaryText.Text = $"{matches.Count:N0} snapshot rows are not linked. {matches.Count(m => m.HasCandidates):N0} have possible registry matches; " +
@@ -210,7 +277,7 @@ public partial class FlocknoteExchangeWindow : Window
 
     private void ShowReview()
     {
-        _review = _exchange!.BuildReview(Direction, IncludeUnlinked);
+        _review = _exchange!.BuildReview(Direction, IncludeUnlinked, _onlyPerson is null ? _selectedPeople : null);
         foreach (var change in _review) change.PropertyChanged += (_, _) => { if (!_bulk) UpdateReviewSummary(); };
         var options = new List<GroupOption> { new(null, $"All groups ({_review.Count:N0})") };
         options.AddRange(Enum.GetValues<FlocknoteGroup>().Select(g => new GroupOption(g, $"{FlocknoteMaps.GroupLabel(g)} ({_review.Count(c => c.Group == g):N0})")));
@@ -250,7 +317,7 @@ public partial class FlocknoteExchangeWindow : Window
         var later = decidable.Count(c => c.Decision == FlocknoteDecision.ReviewLater);
         if (IsImport)
         {
-            var batch = _exchange!.BuildImport(_review, IncludeUnlinked);
+            var batch = _exchange!.BuildImport(_review, IncludeUnlinked, _onlyPerson is null ? _selectedPeople : null);
             ApplySummaryText.Text =
                 $"Ready to import: {batch.FieldsApplied:N0} approved Flocknote values across {batch.Records.Count:N0} register entries, " +
                 $"{batch.Linked:N0} people to link, and {batch.Created:N0} new people (Active member). " +
@@ -265,7 +332,7 @@ public partial class FlocknoteExchangeWindow : Window
             var allPeople = ExportAllRadio.IsChecked == true;
             ApplySummaryText.Text =
                 $"Ready to prepare a Flocknote update file with {outbound:N0} approved registry values" +
-                (allPeople ? $" for all {_exchange!.Linked.Count:N0} linked people." : " (only the people with values to send).") +
+                (allPeople ? $" for all {_selectedPeople.Count:N0} selected people." : " (only the selected people with values to send).") +
                 $" {later:N0} differences are marked Review later and are not included.\n\n" +
                 "You will choose where to save a new spreadsheet. The Flocknote snapshot file is never overwritten. " +
                 "Send the saved file to Flocknote support or import it in Flocknote.";
@@ -284,7 +351,7 @@ public partial class FlocknoteExchangeWindow : Window
     private async Task ApplyImportAsync()
     {
         if (_readOnly || _applied) return;
-        var batch = _exchange!.BuildImport(_review, IncludeUnlinked);
+        var batch = _exchange!.BuildImport(_review, IncludeUnlinked, _onlyPerson is null ? _selectedPeople : null);
         if (MessageBox.Show(this, $"Import {batch.FieldsApplied:N0} values, link {batch.Linked:N0} people, and add {batch.Created:N0} people?",
                 "Confirm import", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
 

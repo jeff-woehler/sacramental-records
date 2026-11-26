@@ -76,20 +76,33 @@
       <ScrollViewer x:Name="ScopePanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
         <StackPanel>
           <TextBlock x:Name="ScopeSummaryText" TextWrapping="Wrap" Margin="0,0,0,14" />
-          <GroupBox x:Name="ImportScopeBox" Header="Which people should be imported?">
+                    <GroupBox Header="Choose people">
             <StackPanel Margin="6,8">
-              <RadioButton x:Name="ImportLinkedOnlyRadio" GroupName="ImportScope" IsChecked="True" Margin="0,0,0,10" FontSize="15"
-                           Content="Linked people only (people whose Flocknote ID is already in the registry)" />
-              <RadioButton x:Name="ImportAllRadio" GroupName="ImportScope" FontSize="15"
-                           Content="All rows in the snapshot (also match unlinked rows and add new people)" />
+              <TextBlock Text="Search the registry, then select one or more people to include in this exchange." TextWrapping="Wrap" Margin="0,0,0,8" />
+              <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBox x:Name="ScopeSearchBox" VerticalContentAlignment="Center" TextChanged="ScopeSearch_TextChanged" ToolTip="Search by name or Flocknote ID" />
+                <Button Grid.Column="1" Content="Select shown" Margin="10,0,0,0" Style="{StaticResource SecondaryButton}" Click="SelectShownPeople_Click" />
+                <Button Grid.Column="2" Content="Clear" Margin="10,0,0,0" Style="{StaticResource SecondaryButton}" Click="ClearSelectedPeople_Click" />
+              </Grid>
+              <ListBox x:Name="ScopePeopleList" Height="230" SelectionMode="Extended" DisplayMemberPath="DisplayName" SelectionChanged="ScopePeople_SelectionChanged" />
+              <TextBlock x:Name="SelectedPeopleText" Margin="0,8,0,0" Foreground="{StaticResource MutedBrush}" />
             </StackPanel>
           </GroupBox>
-          <GroupBox x:Name="ExportScopeBox" Header="Which people should be in the update file?">
+          <GroupBox x:Name="ImportScopeBox" Header="Import options" Margin="0,14,0,0">
+            <StackPanel Margin="6,8">
+              <RadioButton x:Name="ImportLinkedOnlyRadio" GroupName="ImportScope" IsChecked="True" Margin="0,0,0,10" FontSize="15"
+                           Content="Import only the selected linked people" />
+              <RadioButton x:Name="ImportAllRadio" GroupName="ImportScope" FontSize="15"
+                           Content="Also match unlinked snapshot rows to the selected people or add new people" />
+            </StackPanel>
+          </GroupBox>
+          <GroupBox x:Name="ExportScopeBox" Header="Export options" Margin="0,14,0,0">
             <StackPanel Margin="6,8">
               <RadioButton x:Name="ExportChangedOnlyRadio" GroupName="ExportScope" IsChecked="True" Margin="0,0,0,10" FontSize="15"
-                           Content="Only linked people with approved registry values to send" />
+                           Content="Only selected people with approved registry values to send" />
               <RadioButton x:Name="ExportAllRadio" GroupName="ExportScope" FontSize="15"
-                           Content="All linked people (complete snapshot rows, updated with approved registry values)" />
+                           Content="All selected linked people (complete snapshot rows, updated with approved registry values)" />
             </StackPanel>
           </GroupBox>
         </StackPanel>
