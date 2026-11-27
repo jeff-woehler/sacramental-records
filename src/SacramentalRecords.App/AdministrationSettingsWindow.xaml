@@ -18,23 +18,36 @@
     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
       <StackPanel>
         <GroupBox Header="Display">
-          <Grid Margin="4,8,4,4">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <StackPanel>
-              <TextBlock Text="Content spacing" FontWeight="SemiBold" />
-              <TextBlock Text="Use compact spacing to fit more content in every window." Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
-            </StackPanel>
-            <Border Grid.Column="1" Background="{StaticResource SurfaceMutedBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="8" Padding="3" VerticalAlignment="Center" Margin="16,0,0,0">
-              <StackPanel Orientation="Horizontal">
-                <Button x:Name="DecreaseSpacingButton" Content="−" Width="32" MinHeight="30" Padding="0" FontSize="18" Style="{StaticResource SecondaryButton}" Click="DecreaseSpacing_Click" ToolTip="Decrease spacing" />
-                <TextBlock x:Name="SpacingText" Width="70" TextAlignment="Center" Foreground="{StaticResource MutedBrush}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
-                <Button x:Name="IncreaseSpacingButton" Content="+" Width="32" MinHeight="30" Padding="0" FontSize="18" Style="{StaticResource SecondaryButton}" Click="IncreaseSpacing_Click" ToolTip="Increase spacing" />
+          <StackPanel Margin="4,8,4,4">
+            <Grid Margin="0,0,0,16">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <StackPanel>
+                <TextBlock Text="Content spacing" FontWeight="SemiBold" />
+                <TextBlock Text="Use compact spacing to fit more content in every window." Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
               </StackPanel>
-            </Border>
-          </Grid>
+              <Border Grid.Column="1" Background="{StaticResource SurfaceMutedBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="8" Padding="3" VerticalAlignment="Center" Margin="16,0,0,0">
+                <StackPanel Orientation="Horizontal">
+                  <Button x:Name="DecreaseSpacingButton" Content="−" Width="32" MinHeight="30" Padding="0" FontSize="18" Style="{StaticResource SecondaryButton}" Click="DecreaseSpacing_Click" ToolTip="Decrease spacing" />
+                  <TextBlock x:Name="SpacingText" Width="70" TextAlignment="Center" Foreground="{StaticResource MutedBrush}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <Button x:Name="IncreaseSpacingButton" Content="+" Width="32" MinHeight="30" Padding="0" FontSize="18" Style="{StaticResource SecondaryButton}" Click="IncreaseSpacing_Click" ToolTip="Increase spacing" />
+                </StackPanel>
+              </Border>
+            </Grid>
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <StackPanel>
+                <TextBlock Text="Sacrament display" FontWeight="SemiBold" />
+                <TextBlock Text="Show only the first row of data for each sacrament." Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
+              </StackPanel>
+              <CheckBox x:Name="CompactSacramentDisplayCheckBox" Grid.Column="1" VerticalAlignment="Center" Margin="16,0,0,0" />
+            </Grid>
+          </StackPanel>
         </GroupBox>
         <GroupBox Header="Church" Margin="0,14,0,0">
           <Grid Margin="4,8,4,4">

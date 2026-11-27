@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     internal const string ChurchAddressSettingKey = "SACRAMENTAL_RECORDS_CHURCH_ADDRESS";
         internal const string FlocknoteSnapshotSettingKey = "SACRAMENTAL_RECORDS_FLOCKNOTE_SACRAMENT_FILE";
     internal const string SpacingSettingKey = "SACRAMENTAL_RECORDS_SPACING";
+    internal const string CompactSacramentDisplaySettingKey = "SACRAMENTAL_RECORDS_COMPACT_SACRAMENT_DISPLAY";
     internal static readonly Dictionary<string, string?> FileSettings = LoadFileSettings();
 
     private RegistryService? _registry;

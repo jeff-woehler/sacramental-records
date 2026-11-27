@@ -48,10 +48,10 @@
         <StackPanel>
           <GroupBox Header="What would you like to do?">
             <StackPanel Margin="6,8">
-              <RadioButton x:Name="ImportRadio" GroupName="Direction" IsChecked="True" Margin="0,0,0,10" FontSize="15">
+              <RadioButton x:Name="ImportRadio" GroupName="Direction" IsChecked="True" Margin="0,0,0,10" FontSize="15" Checked="Direction_Changed">
                 <TextBlock TextWrapping="Wrap"><Run FontWeight="SemiBold" Text="Import from Flocknote"/><Run Text=" — review Flocknote sacrament values and bring the approved ones into the registry."/></TextBlock>
               </RadioButton>
-              <RadioButton x:Name="ExportRadio" GroupName="Direction" FontSize="15">
+              <RadioButton x:Name="ExportRadio" GroupName="Direction" FontSize="15" Checked="Direction_Changed">
                 <TextBlock TextWrapping="Wrap"><Run FontWeight="SemiBold" Text="Prepare updates for Flocknote"/><Run Text=" — save a new spreadsheet of approved registry values for Flocknote. The snapshot file is never changed."/></TextBlock>
               </RadioButton>
             </StackPanel>

@@ -1,4 +1,6 @@
+using System.ComponentModel;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -9,13 +11,17 @@ using SacramentalRecords.Infrastructure;
 
 namespace SacramentalRecords.App;
 
-public partial class FlocknoteExchangeWindow : Window
+public partial class FlocknoteExchangeWindow : Window, INotifyPropertyChanged
 {
     private enum Step { Choose, Scope, Match, Review, Apply }
 
-    private sealed record GroupOption(FlocknoteGroup? Group, string Label);
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private sealed record GroupOption(FlocknoteGroup? Group, string Label, Func<FlocknoteFieldChange, bool>? Filter = null);
     private sealed record ScopePerson(Person Person, string DisplayName);
 
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
     private readonly RegistryService _registry;
     private readonly bool _readOnly;
@@ -34,7 +40,20 @@ public partial class FlocknoteExchangeWindow : Window
 
     private bool _bulk;
 
-    public IReadOnlyList<FlocknoteOption<FlocknoteDecision>> DecisionOptions => FlocknoteMaps.Decisions;
+    public IReadOnlyList<FlocknoteOption<FlocknoteDecision>> DecisionOptions
+    {
+        get
+        {
+            // Only filter if controls are initialized; during XAML initialization, return all
+            if (ImportRadio == null || ExportRadio == null)
+                return FlocknoteMaps.Decisions;
+            
+            var import = ImportRadio.IsChecked == true;
+            return import
+                ? FlocknoteMaps.Decisions.Where(d => d.Value is FlocknoteDecision.UseFlocknote or FlocknoteDecision.LeaveUnchanged).ToList()
+                : FlocknoteMaps.Decisions.Where(d => d.Value is FlocknoteDecision.KeepRegistry or FlocknoteDecision.LeaveUnchanged).ToList();
+        }
+    }
 
     public FlocknoteExchangeWindow(RegistryService registry, bool readOnly, Func<Task>? publish, Person? onlyPerson = null)
     {
@@ -45,8 +64,6 @@ public partial class FlocknoteExchangeWindow : Window
         _readOnly = readOnly;
         _publish = publish;
         _onlyPerson = onlyPerson;
-        BulkDecision.ItemsSource = FlocknoteMaps.Decisions;
-        BulkDecision.SelectedIndex = 0;
 
         if (readOnly)
         {
@@ -97,6 +114,17 @@ public partial class FlocknoteExchangeWindow : Window
         };
         if (_snapshotPath is not null && Directory.Exists(Path.GetDirectoryName(_snapshotPath))) dialog.InitialDirectory = Path.GetDirectoryName(_snapshotPath);
         if (dialog.ShowDialog(this) == true) SetSnapshotPath(Path.GetFullPath(dialog.FileName));
+    }
+
+    private void Direction_Changed(object sender, RoutedEventArgs e)
+    {
+        OnPropertyChanged(nameof(DecisionOptions));
+        if (BulkDecision == null) return;
+        var options = IsImport
+            ? FlocknoteMaps.Decisions.Where(d => d.Value is FlocknoteDecision.UseFlocknote or FlocknoteDecision.LeaveUnchanged).ToList()
+            : FlocknoteMaps.Decisions.Where(d => d.Value is FlocknoteDecision.KeepRegistry or FlocknoteDecision.LeaveUnchanged).ToList();
+        BulkDecision.ItemsSource = options;
+        if (options.Count > 0) BulkDecision.SelectedIndex = 0;
     }
 
     private IEnumerable<Step> Steps()
@@ -193,6 +221,16 @@ public partial class FlocknoteExchangeWindow : Window
         ImportScopeBox.Visibility = IsImport ? Visibility.Visible : Visibility.Collapsed;
         ExportScopeBox.Visibility = IsImport ? Visibility.Collapsed : Visibility.Visible;
 
+        if (BulkDecision != null)
+        {
+            var options = IsImport
+                ? FlocknoteMaps.Decisions.Where(d => d.Value is FlocknoteDecision.UseFlocknote or FlocknoteDecision.LeaveUnchanged).ToList()
+                : FlocknoteMaps.Decisions.Where(d => d.Value is FlocknoteDecision.KeepRegistry or FlocknoteDecision.LeaveUnchanged).ToList();
+            BulkDecision.ItemsSource = options;
+            if (options.Count > 0) BulkDecision.SelectedIndex = 0;
+        }
+        OnPropertyChanged(nameof(DecisionOptions));
+
         if (step == Step.Match) ShowMatches();
         if (step == Step.Review) ShowReview();
         if (step == Step.Apply) ShowApply();
@@ -281,6 +319,15 @@ public partial class FlocknoteExchangeWindow : Window
         foreach (var change in _review) change.PropertyChanged += (_, _) => { if (!_bulk) UpdateReviewSummary(); };
         var options = new List<GroupOption> { new(null, $"All groups ({_review.Count:N0})") };
         options.AddRange(Enum.GetValues<FlocknoteGroup>().Select(g => new GroupOption(g, $"{FlocknoteMaps.GroupLabel(g)} ({_review.Count(c => c.Group == g):N0})")));
+        
+        // Add special "Conflicts to review" filter that shows only conflicts with Flocknote values
+        var conflictCount = _review.Count(c => c.Kind == FlocknoteChangeKind.Conflict && c.FlocknoteValue is not null);
+        if (conflictCount > 0)
+        {
+            options.Add(new GroupOption(null, $"Conflicts to review ({conflictCount})", 
+                c => c.Kind == FlocknoteChangeKind.Conflict && c.FlocknoteValue is not null));
+        }
+        
         GroupFilter.ItemsSource = options;
         GroupFilter.SelectedIndex = _review.Any(c => c.Group == FlocknoteGroup.ProposedChanges) ? 2 : 0;
         UpdateReviewSummary();
@@ -289,7 +336,21 @@ public partial class FlocknoteExchangeWindow : Window
     private void GroupFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (GroupFilter.SelectedItem is not GroupOption option) return;
-        ReviewGrid.ItemsSource = option.Group is null ? _review : _review.Where(c => c.Group == option.Group).ToList();
+        
+        List<FlocknoteFieldChange> filtered;
+        if (option.Filter is not null)
+        {
+            filtered = _review.Where(option.Filter).ToList();
+            // For conflicts filter, set default decision to LeaveUnchanged
+            foreach (var change in filtered.Where(c => c.IsDecidable))
+                change.Decision = FlocknoteDecision.LeaveUnchanged;
+        }
+        else
+        {
+            filtered = option.Group is null ? _review : _review.Where(c => c.Group == option.Group).ToList();
+        }
+        
+        ReviewGrid.ItemsSource = filtered;
     }
 
     private void BulkDecision_Click(object sender, RoutedEventArgs e)
@@ -314,14 +375,12 @@ public partial class FlocknoteExchangeWindow : Window
     private void ShowApply()
     {
         var decidable = _review.Where(c => c.IsDecidable).ToList();
-        var later = decidable.Count(c => c.Decision == FlocknoteDecision.ReviewLater);
         if (IsImport)
         {
             var batch = _exchange!.BuildImport(_review, IncludeUnlinked, _onlyPerson is null ? _selectedPeople : null);
             ApplySummaryText.Text =
                 $"Ready to import: {batch.FieldsApplied:N0} approved Flocknote values across {batch.Records.Count:N0} register entries, " +
-                $"{batch.Linked:N0} people to link, and {batch.Created:N0} new people (Active member). " +
-                $"{later:N0} differences are marked Review later and will not be changed.\n\n" +
+                $"{batch.Linked:N0} people to link, and {batch.Created:N0} new people (Active member).\n\n" +
                 "Changes are written to the open registry session. Use Save to OneDrive afterwards to publish them.";
             ApplyButton.Content = "Import into registry";
             ApplyButton.IsEnabled = !_readOnly && !_applied && (batch.People.Count > 0 || batch.Records.Count > 0);
@@ -333,8 +392,7 @@ public partial class FlocknoteExchangeWindow : Window
             ApplySummaryText.Text =
                 $"Ready to prepare a Flocknote update file with {outbound:N0} approved registry values" +
                 (allPeople ? $" for all {_selectedPeople.Count:N0} selected people." : " (only the selected people with values to send).") +
-                $" {later:N0} differences are marked Review later and are not included.\n\n" +
-                "You will choose where to save a new spreadsheet. The Flocknote snapshot file is never overwritten. " +
+                "\n\nYou will choose where to save a new spreadsheet. The Flocknote snapshot file is never overwritten. " +
                 "Send the saved file to Flocknote support or import it in Flocknote.";
             ApplyButton.Content = "Save update file…";
             ApplyButton.IsEnabled = outbound > 0 || allPeople;

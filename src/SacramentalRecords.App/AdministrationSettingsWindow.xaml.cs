@@ -14,6 +14,7 @@ public partial class AdministrationSettingsWindow : Window
         RefreshSpacingControls();
         RefreshTemplatePath();
         RefreshFlocknotePath();
+        RefreshCompactSacramentDisplay();
     }
 
     private void DecreaseSpacing_Click(object sender, RoutedEventArgs e)
@@ -47,6 +48,12 @@ public partial class AdministrationSettingsWindow : Window
     {
         var path = MainWindow.FileSettings.GetValueOrDefault(MainWindow.FlocknoteSnapshotSettingKey);
         FlocknotePathText.Text = string.IsNullOrWhiteSpace(path) ? "Not set (staff will locate the file each time)" : path;
+    }
+
+    private void RefreshCompactSacramentDisplay()
+    {
+        var value = MainWindow.FileSettings.GetValueOrDefault(MainWindow.CompactSacramentDisplaySettingKey);
+        CompactSacramentDisplayCheckBox.IsChecked = string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
     }
 
     private void BrowseFlocknote_Click(object sender, RoutedEventArgs e)
@@ -176,6 +183,7 @@ public partial class AdministrationSettingsWindow : Window
     private void Ok_Click(object sender, RoutedEventArgs e)
     {
         MainWindow.FileSettings[MainWindow.ChurchAddressSettingKey] = ChurchAddressText.Text.Trim();
+        MainWindow.FileSettings[MainWindow.CompactSacramentDisplaySettingKey] = (CompactSacramentDisplayCheckBox.IsChecked ?? false).ToString();
         MainWindow.SaveFileSettings();
         DialogResult = true;
     }

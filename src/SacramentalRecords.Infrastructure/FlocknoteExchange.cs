@@ -13,7 +13,7 @@ namespace SacramentalRecords.Infrastructure;
 public enum FlocknoteDirection { Import, Export }
 public enum FlocknoteField { Date, Name, Place, Minister, Sponsors, Volume, Page, Item, Notes }
 public enum FlocknoteChangeKind { FillRegistry, FillFlocknote, Conflict, Information }
-public enum FlocknoteDecision { KeepRegistry, UseFlocknote, LeaveUnchanged, ReviewLater, NotApplicable }
+public enum FlocknoteDecision { KeepRegistry, UseFlocknote, LeaveUnchanged, NotApplicable }
 public enum FlocknoteMatchAction { Link, CreatePerson, Skip }
 
 public enum FlocknoteGroup
@@ -23,7 +23,8 @@ public enum FlocknoteGroup
     NewPeople,
     PossibleMatches,
     MissingFromSnapshot,
-    Invalid
+    Invalid,
+    Conflicts
 }
 
 public sealed record FlocknoteRow(int RowNumber, string? FlocknoteId, string Name, IReadOnlyDictionary<string, string> Values);
@@ -211,8 +212,7 @@ public static class FlocknoteMaps
     [
         new(FlocknoteDecision.KeepRegistry, "Keep registry value"),
         new(FlocknoteDecision.UseFlocknote, "Use Flocknote value"),
-        new(FlocknoteDecision.LeaveUnchanged, "Leave unchanged"),
-        new(FlocknoteDecision.ReviewLater, "Review later")
+        new(FlocknoteDecision.LeaveUnchanged, "Leave unchanged")
     ];
 
     public static string GroupLabel(FlocknoteGroup group) => group switch
@@ -223,6 +223,7 @@ public static class FlocknoteMaps
         FlocknoteGroup.PossibleMatches => "Possible matches and duplicates",
         FlocknoteGroup.MissingFromSnapshot => "Previously linked people missing from this snapshot",
         FlocknoteGroup.Invalid => "Invalid or incomplete rows",
+        FlocknoteGroup.Conflicts => "Conflicts to review",
         _ => group.ToString()
     };
 }

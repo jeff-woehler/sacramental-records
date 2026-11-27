@@ -8,6 +8,7 @@
     <app:StatusDisplayConverter x:Key="StatusDisplayConverter" />
     <app:EntryTypeDisplayConverter x:Key="EntryTypeDisplayConverter" />
     <app:EntryNameLabelConverter x:Key="EntryNameLabelConverter" />
+    <app:CompactSacramentDisplayConverter x:Key="CompactSacramentDisplayConverter" />
   </Window.Resources>
   <Grid Margin="32">
     <Grid.RowDefinitions>
@@ -87,7 +88,7 @@
                   <StackPanel Grid.Column="2" Margin="0,0,12,0"><TextBlock Text="SPONSOR 2" Style="{StaticResource CardLabel}"/><TextBlock Text="{Binding SponsorTwo, TargetNullValue=—}" TextWrapping="Wrap"/></StackPanel>
                   <StackPanel Grid.Column="3" Margin="0,0,12,0"><TextBlock Text="Register Location" Style="{StaticResource CardLabel}"/><TextBlock TextWrapping="Wrap"><Run Text="{Binding Volume, TargetNullValue=—}"/><Run Text="-"/><Run Text="{Binding Page, TargetNullValue=—}"/><Run Text="-"/><Run Text="{Binding Item, TargetNullValue=—}"/></TextBlock></StackPanel>
                 </Grid>
-                <Grid Grid.Row="2" Margin="0,0,0,8">
+                <Grid Grid.Row="2" Margin="0,0,0,8" Visibility="{Binding Converter={StaticResource CompactSacramentDisplayConverter}}">
                   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                   <StackPanel Margin="0,0,12,0"><TextBlock Text="PERFORMED AT" Style="{StaticResource CardLabel}"/><TextBlock Text="{Binding Place, TargetNullValue=—}" TextWrapping="Wrap"/></StackPanel>
                   <StackPanel Grid.Column="1" Margin="0,0,12,0"><TextBlock Text="MINISTER" Style="{StaticResource CardLabel}"/><TextBlock Text="{Binding Minister, TargetNullValue=—}" TextWrapping="Wrap"/></StackPanel>
