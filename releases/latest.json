@@ -1,6 +1,6 @@
 {
-    "version":  "1.2.12",
-    "package":  "SacramentalRecords-1.2.12.zip",
-    "sha256":  "00AF474D6C0D21431A0DEF5B949DC87305121C866113C20BE18D7CA4187697C2",
-    "notes":  "- Improve flocknote import process\n- Finished merge feature.\n- Added ability to merge duplicate person records\n- User-selectable UI spacing; Scoped Flocknote import/export\n- Committing release notes update for v1.2.3"
+    "version":  "1.2.13",
+    "package":  "SacramentalRecords-1.2.13.zip",
+    "sha256":  "8B362AB18FDB4EB04800D31957C7E8C84438A116E9F5D7D5794DFAEFDF5965B1",
+    "notes":  "- Release 1.2.12\n- Improve flocknote import process\n- Finished merge feature.\n- Added ability to merge duplicate person records\n- User-selectable UI spacing; Scoped Flocknote import/export\n- Committing release notes update for v1.2.3"
 }
