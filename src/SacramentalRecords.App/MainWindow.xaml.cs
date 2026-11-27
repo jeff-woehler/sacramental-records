@@ -393,6 +393,7 @@ public partial class MainWindow : Window
     private void UpdateMergeButtonState()
     {
         MergeButton.IsEnabled = PeopleGrid.SelectedItems.Count == 2;
+        EditButton.IsEnabled = PeopleGrid.SelectedItems.Count == 1;
     }
 
     private void PeopleGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -435,7 +436,7 @@ public partial class MainWindow : Window
             }
 
             StatusText.Text = "Saving merged record...";
-            await _registry.SavePersonAsync(mergedPerson.Person, mergedPerson.Person.UpdatedUtc, CancellationToken.None);
+            await _registry.SavePersonAsync(mergedPerson.Person, person1.UpdatedUtc, CancellationToken.None);
             
             StatusText.Text = "Reassigning sacrament records...";
             foreach (var sacrament in person2Sacraments)

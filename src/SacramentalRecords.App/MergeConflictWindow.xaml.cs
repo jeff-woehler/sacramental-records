@@ -38,9 +38,9 @@ public partial class MergeConflictWindow : Window
             };
 
             var grid = new Grid();
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0.5, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0.5, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -56,28 +56,41 @@ public partial class MergeConflictWindow : Window
             Grid.SetRow(fieldLabel, 0);
             grid.Children.Add(fieldLabel);
 
-            // Left value with radio button
+            // Left side container with radio button and content
+            var leftContainer = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Margin = new Thickness(0, 0, 0, 0)
+            };
+
             var leftRadio = new RadioButton
             {
                 Name = $"Radio_Left_{fieldName}",
                 GroupName = fieldName,
-                IsChecked = true,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 4, 8, 0)
+                Margin = new Thickness(0, 2, 8, 0),
+                MinWidth = 20
             };
-            Grid.SetColumn(leftRadio, 0);
-            Grid.SetRow(leftRadio, 1);
-            grid.Children.Add(leftRadio);
 
-            var leftContent = new TextBlock
+            var leftContent = new TextBox
             {
                 Text = FormatValue(leftValue),
+                IsReadOnly = true,
+                BorderThickness = new Thickness(0),
+                Background = System.Windows.Media.Brushes.Transparent,
+                Foreground = System.Windows.Media.Brushes.Black,
                 TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(28, 0, 0, 0)
+                VerticalAlignment = VerticalAlignment.Top,
+                Padding = new Thickness(0),
+                Margin = new Thickness(0)
             };
-            Grid.SetColumn(leftContent, 0);
-            Grid.SetRow(leftContent, 1);
-            grid.Children.Add(leftContent);
+
+            leftContainer.Children.Add(leftRadio);
+            leftContainer.Children.Add(leftContent);
+
+            Grid.SetColumn(leftContainer, 0);
+            Grid.SetRow(leftContainer, 1);
+            grid.Children.Add(leftContainer);
 
             var vsLabel = new TextBlock
             {
@@ -91,34 +104,81 @@ public partial class MergeConflictWindow : Window
             Grid.SetRowSpan(vsLabel, 2);
             grid.Children.Add(vsLabel);
 
-            // Right value with radio button
+            // Right side container with radio button and content
+            var rightContainer = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Margin = new Thickness(0, 0, 0, 0)
+            };
+
             var rightRadio = new RadioButton
             {
                 Name = $"Radio_Right_{fieldName}",
                 GroupName = fieldName,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(8, 4, 8, 0)
+                Margin = new Thickness(0, 2, 8, 0),
+                MinWidth = 20
             };
-            Grid.SetColumn(rightRadio, 2);
-            Grid.SetRow(rightRadio, 1);
-            grid.Children.Add(rightRadio);
 
-            var rightContent = new TextBlock
+            var rightContent = new TextBox
             {
                 Text = FormatValue(rightValue),
-                TextWrapping = TextWrapping.Wrap
+                IsReadOnly = true,
+                BorderThickness = new Thickness(0),
+                Background = System.Windows.Media.Brushes.Transparent,
+                Foreground = System.Windows.Media.Brushes.Black,
+                TextWrapping = TextWrapping.Wrap,
+                VerticalAlignment = VerticalAlignment.Top,
+                Padding = new Thickness(0),
+                Margin = new Thickness(0)
             };
-            Grid.SetColumn(rightContent, 2);
-            Grid.SetRow(rightContent, 1);
-            grid.Children.Add(rightContent);
+
+            rightContainer.Children.Add(rightRadio);
+            rightContainer.Children.Add(rightContent);
+
+            Grid.SetColumn(rightContainer, 2);
+            Grid.SetRow(rightContainer, 1);
+            grid.Children.Add(rightContainer);
 
             container.Child = grid;
             ConflictsPanel.Children.Add(container);
 
-            _selectedChoices[fieldName] = leftRadio;
+            // Determine which radio button should be selected by default
+            // Prefer non-empty values over empty ones
+            bool leftIsEmpty = IsValueEmpty(leftValue);
+            bool rightIsEmpty = IsValueEmpty(rightValue);
+
+            RadioButton defaultSelection;
+            if (leftIsEmpty && !rightIsEmpty)
+            {
+                defaultSelection = rightRadio;
+                rightRadio.IsChecked = true;
+            }
+            else if (rightIsEmpty && !leftIsEmpty)
+            {
+                defaultSelection = leftRadio;
+                leftRadio.IsChecked = true;
+            }
+            else
+            {
+                // Both empty or both non-empty: default to left
+                defaultSelection = leftRadio;
+                leftRadio.IsChecked = true;
+            }
+
+            _selectedChoices[fieldName] = defaultSelection;
             leftRadio.Checked += (s, e) => _selectedChoices[fieldName] = leftRadio;
             rightRadio.Checked += (s, e) => _selectedChoices[fieldName] = rightRadio;
         }
+    }
+
+    private static bool IsValueEmpty(object? value)
+    {
+        if (value is null)
+            return true;
+        if (value is string str)
+            return string.IsNullOrWhiteSpace(str);
+        return false;
     }
 
     private static string FormatValue(object? value)

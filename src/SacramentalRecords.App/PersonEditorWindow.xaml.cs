@@ -115,4 +115,43 @@ public partial class PersonEditorWindow : Window
     }
 
     private static string? Null(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private void ChurchDbId_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2)
+        {
+            var editor = new IdEditorWindow("Church DB", ChurchDbIdBox.Text) { Owner = this };
+            if (editor.ShowDialog() == true)
+            {
+                ChurchDbIdBox.Text = editor.Result ?? string.Empty;
+            }
+            e.Handled = true;
+        }
+    }
+
+    private void PdsId_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2)
+        {
+            var editor = new IdEditorWindow("PDS", PdsIdBox.Text) { Owner = this };
+            if (editor.ShowDialog() == true)
+            {
+                PdsIdBox.Text = editor.Result ?? string.Empty;
+            }
+            e.Handled = true;
+        }
+    }
+
+    private void FlocknoteId_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2)
+        {
+            var editor = new IdEditorWindow("Flocknote", FlocknoteIdBox.Text) { Owner = this };
+            if (editor.ShowDialog() == true)
+            {
+                FlocknoteIdBox.Text = editor.Result ?? string.Empty;
+            }
+            e.Handled = true;
+        }
+    }
 }

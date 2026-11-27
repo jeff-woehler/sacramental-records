@@ -7,6 +7,7 @@ internal static class WindowControlHelper
 {
     private const int GwlStyle = -16;
     private const long WsMinimizeBox = 0x00020000L;
+    private const long WsMaximizeBox = 0x00010000L;
     private const uint SwpNoMove = 0x0002;
     private const uint SwpNoSize = 0x0001;
     private const uint SwpNoZOrder = 0x0004;
@@ -25,6 +26,18 @@ internal static class WindowControlHelper
         };
     }
 
+    public static void RemoveMaximizeButton(Window window)
+    {
+        window.SourceInitialized += (_, _) =>
+        {
+            var handle = new System.Windows.Interop.WindowInteropHelper(window).Handle;
+            var style = GetWindowLongPtr(handle, GwlStyle).ToInt64();
+            SetWindowLongPtr(handle, GwlStyle, new IntPtr(style & ~WsMaximizeBox));
+            SetWindowPos(handle, IntPtr.Zero, 0, 0, 0, 0,
+                SwpNoMove | SwpNoSize | SwpNoZOrder | SwpNoActivate | SwpFrameChanged);
+        };
+    }
+
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr", SetLastError = true)]
     private static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex);
 
@@ -35,3 +48,4 @@ internal static class WindowControlHelper
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y,
         int cx, int cy, uint flags);
 }
+

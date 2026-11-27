@@ -18,9 +18,18 @@
       </StackPanel>
       <Border Grid.Column="1" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="10,7" HorizontalAlignment="Right" VerticalAlignment="Top">
         <StackPanel Orientation="Horizontal">
-          <StackPanel Margin="0,0,18,0"><TextBlock Text="CHURCH DB" Style="{StaticResource CardLabel}"/><TextBox x:Name="ChurchDbIdBox" FontSize="14" IsReadOnly="True" IsTabStop="False" BorderThickness="0" Background="Transparent" Padding="0" VerticalContentAlignment="Center"/></StackPanel>
-          <StackPanel Margin="0,0,18,0"><TextBlock Text="PDS" Style="{StaticResource CardLabel}"/><TextBox x:Name="PdsIdBox" FontSize="14" IsReadOnly="True" IsTabStop="False" BorderThickness="0" Background="Transparent" Padding="0" VerticalContentAlignment="Center"/></StackPanel>
-          <StackPanel><TextBlock Text="FLOCKNOTE" Style="{StaticResource CardLabel}"/><TextBox x:Name="FlocknoteIdBox" FontSize="14" IsReadOnly="True" IsTabStop="False" BorderThickness="0" Background="Transparent" Padding="0" VerticalContentAlignment="Center"/></StackPanel>
+          <StackPanel Margin="0,0,18,0">
+            <TextBlock Text="CHURCH DB" Style="{StaticResource CardLabel}" Cursor="Hand" PreviewMouseLeftButtonDown="ChurchDbId_PreviewMouseDown" ToolTip="Double-click to edit"/>
+            <TextBox x:Name="ChurchDbIdBox" FontSize="14" IsReadOnly="True" IsTabStop="False" BorderThickness="0" Background="Transparent" Padding="0" VerticalContentAlignment="Center" Cursor="Hand" PreviewMouseLeftButtonDown="ChurchDbId_PreviewMouseDown" ToolTip="Double-click to edit"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,18,0">
+            <TextBlock Text="PDS" Style="{StaticResource CardLabel}" Cursor="Hand" PreviewMouseLeftButtonDown="PdsId_PreviewMouseDown" ToolTip="Double-click to edit"/>
+            <TextBox x:Name="PdsIdBox" FontSize="14" IsReadOnly="True" IsTabStop="False" BorderThickness="0" Background="Transparent" Padding="0" VerticalContentAlignment="Center" Cursor="Hand" PreviewMouseLeftButtonDown="PdsId_PreviewMouseDown" ToolTip="Double-click to edit"/>
+          </StackPanel>
+          <StackPanel>
+            <TextBlock Text="FLOCKNOTE" Style="{StaticResource CardLabel}" Cursor="Hand" PreviewMouseLeftButtonDown="FlocknoteId_PreviewMouseDown" ToolTip="Double-click to edit"/>
+            <TextBox x:Name="FlocknoteIdBox" FontSize="14" IsReadOnly="True" IsTabStop="False" BorderThickness="0" Background="Transparent" Padding="0" VerticalContentAlignment="Center" Cursor="Hand" PreviewMouseLeftButtonDown="FlocknoteId_PreviewMouseDown" ToolTip="Double-click to edit"/>
+          </StackPanel>
         </StackPanel>
       </Border>
     </Grid>
