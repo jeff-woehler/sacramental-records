@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using Microsoft.Win32;
 using SacramentalRecords.Domain;
 using SacramentalRecords.Application;
@@ -337,11 +338,66 @@ public partial class MainWindow : Window
         }
     }
 
-    private void PeopleGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e) => OpenSelectedPerson();
+    private void PeopleGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (Keyboard.Modifiers != ModifierKeys.Control)
+        {
+            OpenSelectedPerson();
+        }
+    }
 
     private void PeopleGrid_KeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter) { e.Handled = true; OpenSelectedPerson(); }
+        if (e.Key == Key.Enter && Keyboard.Modifiers != ModifierKeys.Control) 
+        { 
+            e.Handled = true; 
+            OpenSelectedPerson(); 
+        }
+    }
+
+    private void PeopleGrid_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            var hitResult = VisualTreeHelper.HitTest(PeopleGrid, e.GetPosition(PeopleGrid));
+            var listBoxItem = FindParent<ListBoxItem>(hitResult?.VisualHit);
+            
+            if (listBoxItem != null)
+            {
+                var index = PeopleGrid.ItemContainerGenerator.IndexFromContainer(listBoxItem);
+                if (index >= 0)
+                {
+                    if (PeopleGrid.SelectedItems.Contains(PeopleGrid.Items[index]))
+                    {
+                        PeopleGrid.SelectedItems.Remove(PeopleGrid.Items[index]);
+                    }
+                    else
+                    {
+                        PeopleGrid.SelectedItems.Add(PeopleGrid.Items[index]);
+                    }
+                    e.Handled = true;
+                    UpdateMergeButtonState();
+                }
+            }
+        }
+    }
+
+    private static T? FindParent<T>(DependencyObject? child) where T : DependencyObject
+    {
+        var parent = VisualTreeHelper.GetParent(child);
+        if (parent is T typedParent)
+            return typedParent;
+        return parent != null ? FindParent<T>(parent) : null;
+    }
+
+    private void UpdateMergeButtonState()
+    {
+        MergeButton.IsEnabled = PeopleGrid.SelectedItems.Count == 2;
+    }
+
+    private void PeopleGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        UpdateMergeButtonState();
     }
 
     private void OpenSelectedPerson()
@@ -351,6 +407,56 @@ public partial class MainWindow : Window
         var detail = new PersonDetailWindow(_registry, person.RecordId, _packageStore?.IsReadOnly == true) { Owner = this };
         detail.ShowDialog();
         _ = RefreshPeopleAsync();
+    }
+
+    private async void Merge_Click(object sender, RoutedEventArgs e)
+    {
+        if (_registry is null) { StatusText.Text = StatusMessages.OpenPackageFirst; return; }
+        if (PeopleGrid.SelectedItems.Count != 2) { StatusText.Text = "Please select exactly two people to merge."; return; }
+        
+        var person1 = PeopleGrid.SelectedItems[0] as Person;
+        var person2 = PeopleGrid.SelectedItems[1] as Person;
+        
+        if (person1 is null || person2 is null) { StatusText.Text = "Invalid selection."; return; }
+
+        try
+        {
+            StatusText.Text = "Fetching sacrament records...";
+            var person1Sacraments = await _registry.GetSacramentsAsync(person1.RecordId);
+            var person2Sacraments = await _registry.GetSacramentsAsync(person2.RecordId);
+
+            var mergedPerson = MergeService.DetectConflicts(person1, person2);
+            
+            if (mergedPerson.HasConflicts)
+            {
+                var conflictWindow = new MergeConflictWindow(person1, person2, mergedPerson) { Owner = this };
+                if (conflictWindow.ShowDialog() != true) return;
+                mergedPerson = conflictWindow.GetMergedPerson();
+            }
+
+            StatusText.Text = "Saving merged record...";
+            await _registry.SavePersonAsync(mergedPerson.Person, mergedPerson.Person.UpdatedUtc, CancellationToken.None);
+            
+            StatusText.Text = "Reassigning sacrament records...";
+            foreach (var sacrament in person2Sacraments)
+            {
+                var updatedSacrament = sacrament with { PersonRecordId = mergedPerson.Person.RecordId, UpdatedUtc = DateTimeOffset.UtcNow };
+                await _registry.SaveSacramentAsync(updatedSacrament, sacrament.UpdatedUtc, CancellationToken.None);
+            }
+
+            await _registry.DeletePersonAsync(mergedPerson.OtherRecordId, CancellationToken.None);
+            
+            PeopleGrid.SelectedItems.Clear();
+            MergeButton.IsEnabled = false;
+            var sacramentCount = person2Sacraments.Count;
+            var message = $"Records merged successfully ({sacramentCount} sacrament record{(sacramentCount != 1 ? "s" : "")} reassigned).";
+            StatusText.Text = message;
+            await RefreshPeopleAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Merge failed: {ex.Message}";
+        }
     }
 
     private async void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
