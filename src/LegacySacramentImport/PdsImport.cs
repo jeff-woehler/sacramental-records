@@ -19,7 +19,7 @@ internal static partial class Program
     private static readonly Regex Parenthesized = new(@"\(([^)]*)\)", RegexOptions.CultureInvariant);
     private static readonly Regex SpousePrefix = new(@"^\s*(?:SPOUSE|TO)\s*[:;]\s*", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
-    private sealed record PdsSacrament(string Type, DateOnly? Date, Dictionary<string, string?> Fields);
+    private sealed record PdsSacrament(string Type, DateOnly? Date, string? DatePrecision, Dictionary<string, string?> Fields);
 
     private sealed record PdsPerson(
         int Row, string PdsId, string Given, string? Middle, string Family, string? Maiden, DateOnly? Birth,
@@ -50,6 +50,7 @@ internal static partial class Program
         public required Guid PersonId { get; init; }
         public required string Type { get; init; }
         public Dictionary<string, string?> Fields { get; } = new(StringComparer.Ordinal);
+        public string? DatePrecision { get; set; }
         public DateOnly? Date => Fields["SacramentDate"] is { } raw && TryParseDate(raw, out var d) ? d : null;
     }
 
@@ -271,17 +272,50 @@ internal static partial class Program
         firstNames.Remove(string.Empty);
         surnames.Remove(string.Empty);
 
-        var birth = PdsDate(row, pdsId, "person", "Date of Birth", F("Date of Birth"), out _);
-        var deceased = PdsDate(row, pdsId, "person", "Deceased Date", F("Deceased Date"), out _);
-        var status = Yes("Deceased") || Yes("Inactive") ? "historical" : Yes("Non-Parishioner") ? "non_member" : "active_member";
+        var birth = PdsDate(row, pdsId, "person", "Date of Birth", F("Date of Birth"), out _, out _);
+        var deceased = PdsDate(row, pdsId, "person", "Deceased Date", F("Deceased Date"), out _, out _);
+        var status = Yes("Deceased") || Yes("Inactive") ? "historical" : "active_member";
 
         var sacraments = new List<PdsSacrament>();
         foreach (var (type, prefix) in PdsSacramentPrefixes)
         {
-            var date = PdsDate(row, pdsId, type, $"{prefix} Date", F($"{prefix} Date"), out var yearOnly);
+            var date = PdsDate(row, pdsId, type, $"{prefix} Date", F($"{prefix} Date"), out var yearOnly, out var datePrecision);
             if (type == Baptism && date is null && yearOnly is null && F("Baptism Year of Baptism") is { } year &&
                 year.Length == 4 && year.All(char.IsDigit))
+            {
                 yearOnly = year;
+                datePrecision = "year-only";
+            }
+
+            // Try to construct a date from individual date components if the main date is missing
+            if (date is null && yearOnly is null)
+            {
+                var dayStr = F($"{prefix} Day of {prefix}");
+                var monthStr = F($"{prefix} Month Num of {prefix}");
+                var yearStr = F($"{prefix} Year of {prefix}");
+                
+                if (!string.IsNullOrWhiteSpace(dayStr) && !string.IsNullOrWhiteSpace(monthStr) && !string.IsNullOrWhiteSpace(yearStr))
+                {
+                    if (int.TryParse(dayStr, out var day) && int.TryParse(monthStr, out var month) && int.TryParse(yearStr, out var componentYear) &&
+                        day > 0 && day <= 31 && month > 0 && month <= 12 && componentYear > 0)
+                    {
+                        try
+                        {
+                            date = new DateOnly(componentYear, month, day);
+                            datePrecision = "day";
+                        }
+                        catch (ArgumentOutOfRangeException)
+                        {
+                            // Invalid date combination; leave as null
+                        }
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(yearStr) && int.TryParse(yearStr, out var componentYearOnly) && componentYearOnly > 0)
+                {
+                    yearOnly = yearStr;
+                    datePrecision = "year-only";
+                }
+            }
 
             var volume = F($"{prefix} Vol");
             var page = F($"{prefix} Page");
@@ -311,7 +345,6 @@ internal static partial class Program
                 else if (notation is not null && SpousePrefix.IsMatch(notation)) { name = SpousePrefix.Replace(notation, string.Empty).Trim(); notation = null; }
                 if (notation is not null) details.Add($"Notation: {notation}");
                 if (F("Marriage Permission") is { } permission) details.Add($"Permission: {permission}");
-                if (F("Prev Marriages") is { } previous) details.Add($"Marriages: {previous}");
             }
             else if (F($"{prefix} Extra Info") is { } extraInfo) details.Add(extraInfo);
             if (F($"{prefix} Notes") is { } notes) details.Add(notes);
@@ -322,7 +355,7 @@ internal static partial class Program
 
             var minister = F($"{prefix} Performed By");
 
-            sacraments.Add(new PdsSacrament(type, date, new Dictionary<string, string?>(StringComparer.Ordinal)
+            sacraments.Add(new PdsSacrament(type, date, datePrecision, new Dictionary<string, string?>(StringComparer.Ordinal)
             {
                 ["SacramentDate"] = date?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                 ["Name"] = string.IsNullOrWhiteSpace(name) ? null : name,
@@ -340,14 +373,17 @@ internal static partial class Program
         return new PdsPerson(row, pdsId, given, middle.Length == 0 ? null : middle, family, maiden, birth, deceased, status, firstNames, surnames, sacraments);
     }
 
-    private static DateOnly? PdsDate(int row, string pdsId, string type, string field, string? raw, out string? yearOnly)
+    private static DateOnly? PdsDate(int row, string pdsId, string type, string field, string? raw, out string? yearOnly, out string? precision)
     {
         yearOnly = null;
+        precision = "day";  // Default
+        
         if (raw is null) return null;
         if (raw.Length == 4 && raw.All(char.IsDigit))
         {
             if (raw == "0000") return null;
             yearOnly = raw;
+            precision = "year-only";
             PdsNote(row, type, "warning", "year-only-date", pdsId, field, $"'{raw}' is a year only; date left blank");
             return null;
         }
@@ -582,17 +618,18 @@ internal static partial class Program
             if (SacramentColumns.Where(c => c != "Details").All(c => sacrament.Fields[c] is null))
                 PdsNote(x.Row, sacrament.Type, "warning", "sparse-entry", x.PdsId, sacrament.Type,
                     "PDS marks this sacrament as performed but records no date, place, minister, or register reference; an empty entry was added");
-            var record = new DbSacrament { Id = DeterministicId($"pds|{x.PdsId}|{sacrament.Type}"), PersonId = person.Id, Type = sacrament.Type };
+            var record = new DbSacrament { Id = DeterministicId($"pds|{x.PdsId}|{sacrament.Type}"), PersonId = person.Id, Type = sacrament.Type, DatePrecision = sacrament.DatePrecision };
             foreach (var column in SacramentColumns) record.Fields[column] = sacrament.Fields[column];
             using var insert = connection.CreateCommand();
             insert.Transaction = transaction;
             insert.CommandText =
-                $"INSERT INTO Sacraments(RecordId,PersonRecordId,SacramentType,{string.Join(",", SacramentColumns)},UpdatedUtc) " +
-                $"VALUES($id,$person,$type,{string.Join(",", SacramentColumns.Select(c => "$" + c))},$updated)";
+                $"INSERT INTO Sacraments(RecordId,PersonRecordId,SacramentType,{string.Join(",", SacramentColumns)},SacramentDatePrecision,UpdatedUtc) " +
+                $"VALUES($id,$person,$type,{string.Join(",", SacramentColumns.Select(c => "$" + c))},$precision,$updated)";
             Bind(insert, "$id", record.Id.ToString());
             Bind(insert, "$person", person.Id.ToString());
             Bind(insert, "$type", sacrament.Type);
             foreach (var column in SacramentColumns) Bind(insert, "$" + column, record.Fields[column]);
+            Bind(insert, "$precision", sacrament.DatePrecision ?? "day");
             Bind(insert, "$updated", DateTimeOffset.UtcNow.ToString("O"));
             insert.ExecuteNonQuery();
             state.Add(record);
@@ -602,6 +639,8 @@ internal static partial class Program
         var target = candidates[0];
         var registerSponsors = new[] { target.Fields["SponsorOne"], target.Fields["SponsorTwo"] }.OfType<string>().ToList();
         var fills = new List<string>();
+        var shouldUpdatePrecision = false;
+        
         foreach (var column in SacramentColumns)
         {
             var incoming = sacrament.Fields[column];
@@ -610,6 +649,7 @@ internal static partial class Program
             if (current is null)
             {
                 fills.Add(column);
+                if (column == "SacramentDate") shouldUpdatePrecision = true;
                 continue;
             }
             var same = column switch
@@ -628,12 +668,18 @@ internal static partial class Program
 
         using var update = connection.CreateCommand();
         update.Transaction = transaction;
-        update.CommandText = $"UPDATE Sacraments SET {string.Join(",", fills.Select(c => $"{c}=${c}"))},UpdatedUtc=$updated WHERE RecordId=$id";
+        
+        var updateClauses = new List<string>(fills.Select(c => $"{c}=${c}"));
+        if (shouldUpdatePrecision) updateClauses.Add("SacramentDatePrecision=$precision");
+        updateClauses.Add("UpdatedUtc=$updated");
+        
+        update.CommandText = $"UPDATE Sacraments SET {string.Join(",", updateClauses)} WHERE RecordId=$id";
         foreach (var column in fills)
         {
             Bind(update, "$" + column, sacrament.Fields[column]);
             target.Fields[column] = sacrament.Fields[column];
         }
+        if (shouldUpdatePrecision) Bind(update, "$precision", sacrament.DatePrecision ?? "day");
         Bind(update, "$updated", DateTimeOffset.UtcNow.ToString("O"));
         Bind(update, "$id", target.Id.ToString());
         update.ExecuteNonQuery();
