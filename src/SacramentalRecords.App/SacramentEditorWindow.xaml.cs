@@ -29,7 +29,7 @@ public partial class SacramentEditorWindow : Window
             var canonicalType = EntryTypeCatalog.Canonicalize(record.SacramentType);
             TypeBox.SelectedItem = TypeBox.Items.OfType<ComboBoxItem>()
                 .FirstOrDefault(item => Equals(item.Tag, canonicalType));
-            DatePicker.SelectedDate = record.SacramentDate?.ToDateTime(TimeOnly.MinValue);
+            DatePicker.SelectedDate = record.SacramentDate;
             NameBox.Text = record.Name;
             PlaceBox.Text = record.Place; MinisterBox.Text = record.Minister; FatherBox.Text = record.FatherName; MotherBox.Text = record.MotherName;
             SponsorOneBox.Text = record.SponsorOne; SponsorTwoBox.Text = record.SponsorTwo;
@@ -92,7 +92,7 @@ public partial class SacramentEditorWindow : Window
             return;
         }
         var record = new SacramentRecord(_original?.RecordId ?? Guid.NewGuid(), _original?.PersonRecordId ?? _personRecordId,
-            type, DatePicker.SelectedDate is DateTime date ? DateOnly.FromDateTime(date) : null,
+            type, DatePicker.SelectedDate,
             Null(NameBox.Text), Null(PlaceBox.Text), Null(MinisterBox.Text), Null(FatherBox.Text), Null(MotherBox.Text), Null(SponsorOneBox.Text), Null(SponsorTwoBox.Text),
             SponsorTwoWitnessBox.IsChecked == true, Null(ProxyOneBox.Text), Null(ProxyTwoBox.Text),
             Null(VolumeBox.Text), Null(PageBox.Text), Null(ItemBox.Text), Null(DetailsBox.Text), Null(NotationsBox.Text),

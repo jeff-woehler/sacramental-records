@@ -148,6 +148,7 @@ internal static partial class Program
             if (options.Commit) Backup(options.Database);
             if (IsPdsExport(options.Input)) return RunPds(options);
             if (IsFlocknoteMemberExport(options.Input)) return RunFlocknoteMembers(options);
+            if (IsFlocknoteExchangeFile(options.Input)) return RunFlocknoteExchange(options);
 
             var isCsv = Path.GetExtension(options.Input).Equals(".csv", StringComparison.OrdinalIgnoreCase);
             var rows = isCsv
@@ -561,6 +562,49 @@ internal static partial class Program
             return true;
         }
         value = default;
+        return false;
+    }
+
+    /// <summary>
+    /// Attempts to parse a date string and returns both the DateOnly value and its precision level.
+    /// Precision indicates whether the date is fully specified (day), year-month only, or year only.
+    /// </summary>
+    /// <returns>True if parsing succeeded with full precision (day level), false otherwise.</returns>
+    private static bool TryParseDateWithPrecision(string text, out DateOnly value, out string precision)
+    {
+        value = default;
+        precision = "day";  // Default to full precision
+        
+        if (string.IsNullOrWhiteSpace(text))
+            return false;
+
+        // Try to detect and handle YYYY-MM format (e.g., "1965-10" or "1965-10-15")
+        var trimmed = text.Trim();
+        if (trimmed.Contains('-') && trimmed.Count(c => c == '-') == 1 && int.TryParse(trimmed.Substring(0, 4), out var year1))
+        {
+            // Could be YYYY-MM format
+            if (trimmed.Length == 7 && int.TryParse(trimmed.Substring(5, 2), out var month1) && 
+                month1 >= 1 && month1 <= 12 && year1 >= EarliestPlausibleYear)
+            {
+                // YYYY-MM format detected
+                try
+                {
+                    value = new DateOnly(year1, month1, 1);  // Use day 1 as placeholder
+                    precision = "year-month";
+                    return true;
+                }
+                catch { }
+            }
+        }
+
+        // Standard date parsing with full precision
+        if (TryParseDate(text, out var parsed))
+        {
+            value = parsed;
+            precision = "day";
+            return true;
+        }
+
         return false;
     }
 
@@ -1041,8 +1085,8 @@ internal static partial class Program
         command.Transaction = transaction;
         command.CommandText =
             "INSERT INTO Sacraments(RecordId,PersonRecordId,SacramentType,SacramentDate,Name,Place,Minister," +
-            "FatherName,MotherName,SponsorOne,SponsorTwo,Volume,Page,Item,Details,CanonicalNotations,UpdatedUtc) " +
-            "VALUES($id,$person,$type,$date,$name,$place,$minister,$father,$mother,$sponsor1,$sponsor2,$volume,$page,$item,$details,$notations,$updated)";
+            "FatherName,MotherName,SponsorOne,SponsorTwo,Volume,Page,Item,Details,CanonicalNotations,SacramentDatePrecision,UpdatedUtc) " +
+            "VALUES($id,$person,$type,$date,$name,$place,$minister,$father,$mother,$sponsor1,$sponsor2,$volume,$page,$item,$details,$notations,$precision,$updated)";
         Bind(command, "$id", recordId.ToString());
         Bind(command, "$person", personId.ToString());
         Bind(command, "$type", map.Type);
@@ -1059,6 +1103,7 @@ internal static partial class Program
         Bind(command, "$item", Value(row, map.Item));
         Bind(command, "$details", BuildDetails(row));
         Bind(command, "$notations", BuildNotations(row));
+        Bind(command, "$precision", "day");  // Register data assumed to have full precision
         Bind(command, "$updated", DateTimeOffset.UtcNow.ToString("O"));
         command.ExecuteNonQuery();
     }
@@ -1176,7 +1221,18 @@ internal static partial class Program
             CREATE INDEX IF NOT EXISTS IX_Sacraments_Person ON Sacraments(PersonRecordId);
             """;
         command.ExecuteNonQuery();
-        foreach (var column in new[] { "MaidenName", "DeceasedDate" })
+        
+        // Add columns for date precision tracking (preserves partial date information)
+        var peopleColumns = new[] 
+        { 
+            "MaidenName", 
+            "DeceasedDate",
+            "BirthDatePrecision",      // Track precision of BirthDate: "day" | "year-month" | "year-only"
+            "BaptismDatePrecision",    // Track precision of BaptismDate
+            "DeceasedDatePrecision"    // Track precision of DeceasedDate
+        };
+        
+        foreach (var column in peopleColumns)
         {
             using var check = connection.CreateCommand();
             check.CommandText = "SELECT COUNT(*) FROM pragma_table_info('People') WHERE name=$column";
@@ -1186,11 +1242,23 @@ internal static partial class Program
             alter.CommandText = $"ALTER TABLE People ADD COLUMN {column} TEXT";
             alter.ExecuteNonQuery();
         }
+        
+        // Add date precision column to Sacraments
+        using (var check = connection.CreateCommand())
+        {
+            check.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Sacraments') WHERE name='SacramentDatePrecision'";
+            if (Convert.ToInt64(check.ExecuteScalar(), CultureInfo.InvariantCulture) == 0)
+            {
+                using var alter = connection.CreateCommand();
+                alter.CommandText = "ALTER TABLE Sacraments ADD COLUMN SacramentDatePrecision TEXT";
+                alter.ExecuteNonQuery();
+            }
+        }
     }
 
     private static Options ParseArguments(string[] args)
     {
-                const string usage = "Usage: --input <legacy-sacraments.xlsm|Weddings.csv|PDS-export.csv|Flocknote Member.xlsx> --database <MemberRecords.sqlite> [--lookup Lookup.xlsx] [--commit] [--report report.csv]";
+                const string usage = "Usage: --input <legacy-sacraments.xlsm|Weddings.csv|PDS-export.csv|Flocknote Member.xlsx|Flocknote Sacrament.xlsx> --database <MemberRecords.sqlite> [--lookup Lookup.xlsx] [--commit] [--report report.csv]";
 
         string? input = null, database = null, report = null, lookup = null;
         var commit = false;

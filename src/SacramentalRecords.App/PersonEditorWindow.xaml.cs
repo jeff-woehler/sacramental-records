@@ -22,17 +22,17 @@ public partial class PersonEditorWindow : Window
             GivenNameBox.Text = person.GivenName;
             MiddleNameBox.Text = person.MiddleName;
             FamilyNameBox.Text = person.FamilyName;
-            BirthDatePicker.SelectedDate = person.BirthDate?.ToDateTime(TimeOnly.MinValue);
+            BirthDatePicker.SelectedDate = person.BirthDate;
             ChurchDbIdBox.Text = person.ChurchDbId;
             BirthCityBox.Text = person.BirthCity;
-            BaptismDatePicker.SelectedDate = person.BaptismDate?.ToDateTime(TimeOnly.MinValue);
+            BaptismDatePicker.SelectedDate = person.BaptismDate;
             BaptismChurchBox.Text = person.BaptismChurch;
             CreateBaptismBox.Visibility = Visibility.Collapsed;
             StatusBox.SelectedValue = person.Status;
             PdsIdBox.Text = person.PdsMemberId;
             FlocknoteIdBox.Text = person.FlocknoteId;
             MaidenNameBox.Text = person.MaidenName;
-            DeceasedDatePicker.SelectedDate = person.DeceasedDate?.ToDateTime(TimeOnly.MinValue);
+            DeceasedDatePicker.SelectedDate = person.DeceasedDate;
         }
         else StatusBox.SelectedIndex = 0;
         Loaded += async (_, _) => await ApplyBaptismLinkAsync();
@@ -46,7 +46,7 @@ public partial class PersonEditorWindow : Window
             var baptism = (await _registry.GetSacramentsAsync(_original.RecordId)).FirstOrDefault(record =>
                 string.Equals(EntryTypeCatalog.Canonicalize(record.SacramentType), "baptism", StringComparison.OrdinalIgnoreCase));
             if (baptism is null) return;
-            BaptismDatePicker.SelectedDate = baptism.SacramentDate?.ToDateTime(TimeOnly.MinValue);
+            BaptismDatePicker.SelectedDate = baptism.SacramentDate;
             BaptismChurchBox.Text = baptism.Place;
             BaptismDatePicker.IsEnabled = false;
             BaptismChurchBox.IsReadOnly = true;
@@ -84,13 +84,13 @@ public partial class PersonEditorWindow : Window
         var status = StatusBox.SelectedValue?.ToString() ?? "historical";
         var person = new Person(_original?.RecordId ?? Guid.NewGuid(), given,
             Null(MiddleNameBox.Text), family,
-            BirthDatePicker.SelectedDate is DateTime date ? DateOnly.FromDateTime(date) : null,
+            BirthDatePicker.SelectedDate,
             Null(ChurchDbIdBox.Text), Null(BirthCityBox.Text),
-            BaptismDatePicker.SelectedDate is DateTime baptismDate ? DateOnly.FromDateTime(baptismDate) : null,
+            BaptismDatePicker.SelectedDate,
             Null(BaptismChurchBox.Text), status,
             Null(PdsIdBox.Text), Null(FlocknoteIdBox.Text), _original?.UpdatedUtc ?? DateTimeOffset.MinValue,
             Null(MaidenNameBox.Text),
-            DeceasedDatePicker.SelectedDate is DateTime deceased ? DateOnly.FromDateTime(deceased) : null);
+            DeceasedDatePicker.SelectedDate);
         if (person == _original)
         {
             DialogResult = false;

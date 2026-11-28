@@ -1,6 +1,7 @@
 <Window x:Class="SacramentalRecords.App.SacramentEditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:SacramentalRecords.App"
         Title="Entry" Width="800" Height="800" MinHeight="700" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         PreviewKeyDown="Window_PreviewKeyDown">
   <Window.Resources>
@@ -37,7 +38,7 @@
         <TextBlock Text="Entry Type *" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,12,0"/>
         <ComboBox x:Name="TypeBox" Grid.Column="1" Margin="4" Height="40" Padding="8,0" FontFamily="Segoe UI" FontSize="17" Foreground="{StaticResource InkBrush}" HorizontalContentAlignment="Left" VerticalContentAlignment="Center" ItemTemplate="{StaticResource EntryTypeItemTemplate}"/>
         <TextBlock Grid.Column="3" Text="Date" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,12,0"/>
-        <DatePicker x:Name="DatePicker" Grid.Column="4" Height="40" FontSize="15" Foreground="{StaticResource InkBrush}" VerticalContentAlignment="Center" HorizontalContentAlignment="Stretch"/>
+        <local:PartialDatePicker x:Name="DatePicker" Grid.Column="4" Height="40" FontSize="15" VerticalContentAlignment="Center" HorizontalContentAlignment="Stretch"/>
       </Grid>
       <Grid Grid.Row="3" Margin="0,0,0,12">
         <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/><ColumnDefinition Width="24"/><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
